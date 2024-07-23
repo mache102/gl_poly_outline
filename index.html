@@ -1,0 +1,57 @@
+<html>
+  <head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"></link>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+    <style>
+      html, body {
+        overflow: hidden; 
+        font-family: 'Ubuntu', sans-serif;
+        height: 100vh;
+        margin: 0; 
+      }
+      .centered-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        height: 100%;
+        align-items: center;
+      }
+
+      #game-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+      }
+
+      .overlay-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 2; 
+      }
+
+      .text-outline {
+        color: white;
+        text-shadow: -1px -1px 0 #000, 0 -1px 0 #000, 1px -1px 0 #000, 1px 0 0 #000, 1px 1px 0 #000, 0 1px 0 #000, -1px 1px 0 #000, -1px 0 0 #000;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+    </style>
+  </head>
+  <body class="bg-gray-200 p-10">
+    <div id="main-content" class="centered-content">
+      <canvas id="game-canvas"></canvas>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

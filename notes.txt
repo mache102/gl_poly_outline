@@ -1,0 +1,118 @@
+notes about opengl and webgl syntax and usage
+
+
+/*
+NOTE:
+
+// vao, vbo generation; vao, vbo binding; vbo data; render
+
+// vao, vbo generation
+glGenVertexArrays(1, &vao);
+glGenBuffers(1, &vbo);
+glGenBuffers(1, &offset_vbo);
+glGenBuffers(1, &size_vbo);
+glGenBuffers(1, &attrs_vbo);
+glGenBuffers(1, &color_vbo);
+
+// vao, vbo binding
+glBindVertexArray(vao);
+
+glBindBuffer(GL_ARRAY_BUFFER, vbo);
+glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
+glEnableVertexAttribArray(0);
+
+glBindBuffer(GL_ARRAY_BUFFER, offset_vbo);
+glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
+glEnableVertexAttribArray(1);
+
+glBindBuffer(GL_ARRAY_BUFFER, size_vbo);
+glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+glEnableVertexAttribArray(2);
+
+glBindBuffer(GL_ARRAY_BUFFER, attrs_vbo);
+glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE, sizeof(uint8_t), (void*)0);
+glEnableVertexAttribArray(3);
+
+glBindBuffer(GL_ARRAY_BUFFER, color_vbo);
+glVertexAttribIPointer(4, 1, GL_UNSIGNED_INT, sizeof(uint32_t), (void*)0);
+glEnableVertexAttribArray(4);
+
+
+  // getAttribLocation requires the program to be in use!
+  shader.use();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  const positionLocation = shader.getAttribLocation("a_position");
+  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(positionLocation);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, offsetBuffer);
+  const offsetLocation = shader.getAttribLocation("a_offset");
+  gl.vertexAttribPointer(offsetLocation, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(offsetLocation);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuffer);
+  const sizeLocation = shader.getAttribLocation("a_size");
+  gl.vertexAttribPointer(sizeLocation, 1, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(sizeLocation);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, attrsBuffer);
+  const attrsLocation = shader.getAttribLocation("a_attrs");
+  gl.vertexAttribPointer(attrsLocation, 1, gl.UNSIGNED_BYTE, false, 0, 0);
+  gl.enableVertexAttribArray(attrsLocation);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  const colorLocation = shader.getAttribLocation("a_color");
+  gl.vertexAttribPointer(colorLocation, 4, gl.UNSIGNED_BYTE, true, 0, 0);
+  gl.enableVertexAttribArray(colorLocation);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+// vbo data
+glBindVertexArray(vao);
+glBindBuffer(GL_ARRAY_BUFFER, vbo);
+glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * positions.size(), positions.data(), GL_DYNAMIC_DRAW);
+
+glBindBuffer(GL_ARRAY_BUFFER, offset_vbo);
+glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec2) * offsets.size(), offsets.data(), GL_DYNAMIC_DRAW);
+
+glBindBuffer(GL_ARRAY_BUFFER, size_vbo);
+glBufferData(GL_ARRAY_BUFFER, sizeof(float) * sizes.size(), sizes.data(), GL_DYNAMIC_DRAW);
+
+glBindBuffer(GL_ARRAY_BUFFER, attrs_vbo);
+glBufferData(GL_ARRAY_BUFFER, sizeof(uint8_t) * attrs.size(), attrs.data(), GL_DYNAMIC_DRAW);
+
+glBindBuffer(GL_ARRAY_BUFFER, color_vbo);
+glBufferData(GL_ARRAY_BUFFER, sizeof(uint32_t) * colors.size(), colors.data(), GL_DYNAMIC_DRAW);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, offsetBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(offsets), gl.STATIC_DRAW);  
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuffer); 
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(sizes), gl.STATIC_DRAW);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, attrsBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(attrs), gl.STATIC_DRAW);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Uint32Array(colors), gl.STATIC_DRAW);
+
+// render
+
+shader->use();
+shader->setVec2("u_cam_pos", cam_pos);
+glBindVertexArray(vao);
+glDrawArrays(GL_TRIANGLES, 0, positions.size());
+
+  // call these before any rendering
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  shader.use();
+  // set uniforms
+  shader.setVec2("u_resolution", new vec2(gl.canvas.width, gl.canvas.height));
+  gl.drawArrays(gl.TRIANGLES, 0, positions.length / 3);
+
+*/
