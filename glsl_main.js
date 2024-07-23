@@ -15,17 +15,15 @@ in ivec2 a_position;
 in uint a_attrs;
 in vec4 a_color;
 
-in uint a_texture_polygon_index;
-in uint a_texture_polygon_length;
-in uint a_texture_vertex_index;
+in uint a_polygon_start_index;
+in uint a_polygon_length;
 
 // out (attrs and color)
 out vec4 o_color;
 flat out uint o_attrs;
 
-flat out uint o_texture_polygon_index;
-flat out uint o_texture_polygon_length;
-flat out uint o_texture_vertex_index;
+flat out uint o_polygon_start_index;
+flat out uint o_polygon_length;
 
 uniform vec2 u_winres;
 
@@ -38,9 +36,8 @@ void main(void) {
   o_color = a_color;
   o_attrs = a_attrs;
 
-  o_texture_polygon_index = a_texture_polygon_index;
-  o_texture_polygon_length = a_texture_polygon_length;
-  o_texture_vertex_index = a_texture_vertex_index;
+  o_polygon_start_index = a_polygon_start_index;
+  o_polygon_length = a_polygon_length;
 }`;
 
 // Create and compile the fragment shader
@@ -53,9 +50,8 @@ precision mediump float; // Specify default precision for floats
 in vec4 o_color;
 flat in uint o_attrs;
 
-flat in uint o_texture_polygon_index;
-flat in uint o_texture_polygon_length;
-flat in uint o_texture_vertex_index;
+flat in uint o_polygon_start_index;
+flat in uint o_polygon_length;
 
 out vec4 outColor;
 
@@ -78,7 +74,7 @@ vec2 getTexCoord(uint index) {
   ));
 }
 
-// prepare an array of vertices (length: o_texture_polygon_length)
+// prepare an array of vertices (length: o_polygon_length)
 ivec2 vertices[255];
 
 const uint INSIDE_POLYGON = 1u;
@@ -132,27 +128,6 @@ uint isOnOutline(vec2 uv, uint polygon_length) {
     }
   }
   return inside? INSIDE_POLYGON : OUTSIDE_POLYGON;
-  // return INSIDE_POLYGON;
-}
-
-float getEdgeDistance(vec2 uv, uint polygon_length) {
-  bool inside = false;
-
-  float closestDistance = 1000000.0;
-
-  for (uint i = 0u; i < polygon_length; i++) {
-    vec2 vertex = vec2(vertices[i]);
-    vec2 next_vertex = vec2(vertices[(i + 1u) % polygon_length]);
-
-    vec2 edge = next_vertex - vertex;
-    vec2 normal = normalize(vec2(edge.y, -edge.x)); 
-
-    vec2 to_vertex = uv - vertex;
-    float distance = dot(normal, to_vertex);
-
-    closestDistance = min(closestDistance, abs(distance));
-  }
-  return closestDistance;
 }
 
 vec4 lerpColor(vec4 a, vec4 b, float t) {
@@ -161,29 +136,14 @@ vec4 lerpColor(vec4 a, vec4 b, float t) {
 
 void main(void) {
   // retrieve all the vertices from the tex
-  for (uint i = 0u; i < o_texture_polygon_length; i++) {
-    vertices[i] = texture(u_vertex_sampler, getTexCoord(o_texture_polygon_index + i)).xy + ivec2(u_winres_frag / 2.0);
+  for (uint i = 0u; i < o_polygon_length; i++) {
+    vertices[i] = texture(u_vertex_sampler, getTexCoord(o_polygon_start_index + i)).xy + ivec2(u_winres_frag / 2.0);
   }
 
   vec2 fragCoord = gl_FragCoord.xy;
 
-  uint fragmentLocation = isOnOutline(fragCoord, o_texture_polygon_length);
-  // float closestDistance = getEdgeDistance(fragCoord, o_texture_polygon_length);
+  uint fragmentLocation = isOnOutline(fragCoord, o_polygon_length);
 
-  // vec4 outlineColor = lerpColor(o_color, vec4(0.0, 0.0, 0.0, 1.0), 0.5);
-  // do a smoothstep between the inside and outline (u_outline_size - ss_x to u_outline_size + ss_x)
-  // from o_color to outlineColor
-
-  // float ss_x = 1.0;
-  // float m = smoothstep(u_outline_size - ss_x, u_outline_size + ss_x, abs(closestDistance));
-  // outColor = mix(outlineColor, o_color, m);
-
-  // if (abs(closestDistance) <= u_outline_size) {
-  //   outColor = outlineColor;
-  //   return;
-  // }
-
-  // INSIDE_POLYGON, ON_OUTLINE, OUTSIDE_POLYGON: uints 1,2,3, respectively
   switch (fragmentLocation) {
     case INSIDE_POLYGON:
       outColor = o_color;
@@ -192,15 +152,11 @@ void main(void) {
       outColor = lerpColor(o_color, vec4(0.0, 0.0, 0.0, 1.0), 0.5);
       return;
     case OUTSIDE_POLYGON:
-      if (u_render_bounding_boxes) {
-        outColor = vec4(1.0, 0.0, 0.0, 1.0);
-        return;
-      }
       discard;
       return;
   }
 
-  // outColor = o_color;
+  outColor = o_color;
 }`;
 
 export { vertexShaderCode, fragmentShaderCode };

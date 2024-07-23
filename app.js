@@ -7,22 +7,27 @@ import { Color } from './color.js';
 import { vertexShaderCode, fragmentShaderCode } from './glsl_main.js';
 
 const canvas = document.getElementById('game-canvas');
+
+canvas.width = 1920;
+canvas.height = 1080;
+
 const gl = canvas.getContext('webgl2', { antialias: true });
 if (!gl) {
   alert('Unable to initialize WebGL2. Your browser may not support it.');
 }
 
-const outlineSize = 3;
+const outlineSize = 5;
 let shader;
 let vertexTexture;
 let textureSize = 2048; // max 4194304 vertices 
 let verticesPerPixel = 1; // 1 vertex per pixel
 let maxVertexCount = textureSize * textureSize * verticesPerPixel;
 let textureData = new Int16Array(maxVertexCount * 2); // 2 int16 values per vertex
-let textureIndex = 0;
+let startIndex = 0;
 const vertexTextureUnit = 0;
 let renderBoundingBoxes = false;
-let repeatedPolygonCount = 10000;
+
+let polygonCount = 300;
 
 let lastTime = 0;
 let frameCount = 0;
@@ -34,27 +39,21 @@ let bgColor = new Color("#a7a7af");
 let isWireframe = false; // Initial mode: filled
 
 let b_positions = [];
-// let b_offsets = [];
-// let b_sizes = [];
 let b_attrs = [];
 let b_colors = [];
 
-let b_texture_polygon_indices = []; // first index of this polygon in the texture
-let b_texture_lengths = []; // number of vertices in this polygon
-let b_texture_vertex_indices = []; // index of this vertex in the texture
+let b_polygon_start_indices = []; // first index of this polygon in the texture
+let b_polygon_lengths = []; // number of vertices in this polygon
 
 let b_indices = [];
 
 const positionBuffer = gl.createBuffer();
-// const offsetBuffer = gl.createBuffer();
-// const sizeBuffer = gl.createBuffer();
 const attrsBuffer = gl.createBuffer();
 const colorBuffer = gl.createBuffer();
 const indexBuffer = gl.createBuffer();
 
-const texturePolygonIndicesBuffer = gl.createBuffer();
-const textureLengthsBuffer = gl.createBuffer();
-const textureVertexIndicesBuffer = gl.createBuffer();
+const polygonStartIndicesBuffer = gl.createBuffer();
+const polygonLengthsBuffer = gl.createBuffer();
 
 /*
 pos: vec2
@@ -63,17 +62,13 @@ size: float
 attr: uint
 color: Color
 */
-function addSingleData({pos, offset, size, attr, color, texturePolygonIndex, polygonLength, vertexIndex}) {
-  // b_positions.push(pos.x, pos.y);
+function addSingleData({pos, attr, color, polygonStartIndex, polygonLength}) {
   b_positions.push(Math.round(pos.x), Math.round(pos.y));
-  // b_offsets.push(offset.x, offset.y);
-  // b_sizes.push(size);
   b_attrs.push(attr);
   b_colors.push(color.r, color.g, color.b, color.a);
 
-  b_texture_polygon_indices.push(texturePolygonIndex);
-  b_texture_lengths.push(polygonLength);
-  b_texture_vertex_indices.push(vertexIndex);
+  b_polygon_start_indices.push(polygonStartIndex);
+  b_polygon_lengths.push(polygonLength);
 }
 
 function pushIndices(newIndices, offset) {
@@ -112,18 +107,15 @@ function addPolygon({vertices, offset, size, attr, color}) {
     }
     // addSingleData({
     //   pos: pos_,
-    //   offset: offset,
-    //   size: size,
     //   attr: attr,
     //   color: color,
-    //   texturePolygonIndex: textureIndex,
+    //   polygonStartIndex: startIndex,
     //   polygonLength: vertexCount,
-    //   vertexIndex: i
     // });
 
-    textureData[(textureIndex + i) * 2] = pos_.x,
-    textureData[(textureIndex + i) * 2 + 1] = pos_.y;
-    // console.log(`appended vertex (${pos_.x}, ${pos_.y}) at index ${textureIndex + i}`);
+    textureData[(startIndex + i) * 2] = pos_.x,
+    textureData[(startIndex + i) * 2 + 1] = pos_.y;
+    // console.log(`appended vertex (${pos_.x}, ${pos_.y}) at index ${startIndex + i}`);
   }
 
   aa = aa.subtract(new vec2(outlineSize, outlineSize));
@@ -133,44 +125,35 @@ function addPolygon({vertices, offset, size, attr, color}) {
   for (let i = 0; i < 4; i++) {
     addSingleData({
       pos: aabb[i],
-      offset: offset,
-      size: size,
       attr: attr,
       color: color,
-      texturePolygonIndex: textureIndex,
-      polygonLength: vertexCount,
-      vertexIndex: i
+      polygonStartIndex: startIndex,
+      polygonLength: vertexCount
     });
   }
 
-  textureIndex += vertexCount;
+  startIndex += vertexCount;
 }
 
 function clearBuffers() {
   b_positions = [];
-  // b_offsets = [];
-  // b_sizes = [];
   b_attrs = [];
   b_colors = [];
 
-  b_texture_polygon_indices = [];
-  b_texture_lengths = [];
-  b_texture_vertex_indices = [];  
+  b_polygon_start_indices = [];
+  b_polygon_lengths = [];
 
   b_indices = [];
 }
 
 function printBuffers() {
   console.log(`positions: ${b_positions}`);
-  // console.log(`offsets: ${b_offsets}`);
-  // console.log(`sizes: ${b_sizes}`);
   console.log(`attrs: ${b_attrs}`); 
   console.log(`colors: ${b_colors}`);
   console.log(`indices: ${b_indices}`);
 
-  console.log(`texture_polygon_indices: ${b_texture_polygon_indices}`);
-  console.log(`texture_lengths: ${b_texture_lengths}`);
-  console.log(`texture_vertex_indices: ${b_texture_vertex_indices}`);
+  console.log(`texture_polygon_indices: ${b_polygon_start_indices}`);
+  console.log(`texture_lengths: ${b_polygon_lengths}`);
 }
 
 function initBuffers(shader) {
@@ -184,16 +167,6 @@ function initBuffers(shader) {
   gl.vertexAttribIPointer(positionLocation, 2, gl.SHORT, false, 0, 0);
   gl.enableVertexAttribArray(positionLocation);
 
-  // gl.bindBuffer(gl.ARRAY_BUFFER, offsetBuffer);
-  // const offsetLocation = shader.getAttribLocation("a_offset");
-  // gl.vertexAttribPointer(offsetLocation, 2, gl.FLOAT, false, 0, 0);
-  // gl.enableVertexAttribArray(offsetLocation);
-
-  // gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuffer);
-  // const sizeLocation = shader.getAttribLocation("a_size");
-  // gl.vertexAttribPointer(sizeLocation, 1, gl.FLOAT, false, 0, 0);
-  // gl.enableVertexAttribArray(sizeLocation);
-
   // gl.vertexAttribIPointer(index, size, type, stride, offset);
   gl.bindBuffer(gl.ARRAY_BUFFER, attrsBuffer);
   const attrsLocation = shader.getAttribLocation("a_attrs");
@@ -205,21 +178,16 @@ function initBuffers(shader) {
   gl.vertexAttribPointer(colorLocation, 4, gl.UNSIGNED_BYTE, true, 0, 0);
   gl.enableVertexAttribArray(colorLocation);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, texturePolygonIndicesBuffer);  
-  const texturePolygonIndicesLocation = shader.getAttribLocation("a_texture_polygon_index");
+  gl.bindBuffer(gl.ARRAY_BUFFER, polygonStartIndicesBuffer);  
+  const texturePolygonIndicesLocation = shader.getAttribLocation("a_polygon_start_index");
   gl.vertexAttribIPointer(texturePolygonIndicesLocation, 1, gl.UNSIGNED_INT, false, 0, 0);
   gl.enableVertexAttribArray(texturePolygonIndicesLocation);
 
   // polygon may not exceed 255 vertices
-  gl.bindBuffer(gl.ARRAY_BUFFER, textureLengthsBuffer);
-  const textureLengthsLocation = shader.getAttribLocation("a_texture_polygon_length");
-  gl.vertexAttribIPointer(textureLengthsLocation, 1, gl.UNSIGNED_BYTE, false, 0, 0);
-  gl.enableVertexAttribArray(textureLengthsLocation);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, textureVertexIndicesBuffer);
-  const textureVertexIndicesLocation = shader.getAttribLocation("a_texture_vertex_index");
-  gl.vertexAttribIPointer(textureVertexIndicesLocation, 1, gl.UNSIGNED_BYTE, false, 0, 0);
-  gl.enableVertexAttribArray(textureVertexIndicesLocation);
+  gl.bindBuffer(gl.ARRAY_BUFFER, polygonLengthsBuffer);
+  const polygonLengthsLocation = shader.getAttribLocation("a_polygon_length");
+  gl.vertexAttribIPointer(polygonLengthsLocation, 1, gl.UNSIGNED_BYTE, false, 0, 0);
+  gl.enableVertexAttribArray(polygonLengthsLocation);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
@@ -229,33 +197,26 @@ function glbdAll() {
   // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(b_positions), gl.STATIC_DRAW);
   gl.bufferData(gl.ARRAY_BUFFER, new Int16Array(b_positions), gl.STATIC_DRAW);
 
-  // gl.bindBuffer(gl.ARRAY_BUFFER, offsetBuffer);
-  // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(b_offsets), gl.STATIC_DRAW);  
-
-  // gl.bindBuffer(gl.ARRAY_BUFFER, sizeBuffer); 
-  // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(b_sizes), gl.STATIC_DRAW);
-
   gl.bindBuffer(gl.ARRAY_BUFFER, attrsBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(b_attrs), gl.STATIC_DRAW);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
   gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(b_colors), gl.STATIC_DRAW);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, texturePolygonIndicesBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Uint32Array(b_texture_polygon_indices), gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, polygonStartIndicesBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Uint32Array(b_polygon_start_indices), gl.STATIC_DRAW);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, textureLengthsBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(b_texture_lengths), gl.STATIC_DRAW);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, textureVertexIndicesBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(b_texture_vertex_indices), gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, polygonLengthsBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(b_polygon_lengths), gl.STATIC_DRAW);
 
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(b_indices), gl.STATIC_DRAW);
 
 }
 
+
 function resizeCanvasToDisplaySize(canvas) {
+
   // console.log(`has canvas, has gl? ${!!canvas}, ${!!gl}`);
   if (!canvas || !gl) return;
   // Lookup the size the browser is displaying the canvas in CSS pixels
@@ -333,76 +294,25 @@ function draw() {
 
 function addData() {
   gl.bindTexture(gl.TEXTURE_2D, vertexTexture);
-  for (let i = 0; i < 1; i++) {
-    let o_ = new vec2(0, 0);
-    o_ = o_.add(new vec2(i * 50 * Math.cos(i), i * 50 * Math.sin(i)));
-    addPolygon({
-    
-      vertices: [
-        new vec2(0, -0.5),
-        new vec2(1, 0),
-        new vec2(1, 1),
-        new vec2(0, 1),
-        new vec2(-0.5, 0.5), 
-        new vec2(-0.5, 0),
-      ],
-      offset: o_,
-      size: 149,
-      attr: 0,
-      color: new Color(25, 155, 25, 255)
-    });
-  }
-
-  let polygonCountWidth = 50;
-  let polygonCountHeight = 50;
-
 
   let canvasWidth = canvas.width;
   let canvasHeight = canvas.height;
 
-  for (let i = 0; i < repeatedPolygonCount; i++) {
-    // curroffset is based on the tiling of the polygon throughout the canvas
-    // get x and y of the current polygon
-
-    let nPolygonX = i % polygonCountWidth;
-    let nPolygonY = Math.floor(i / polygonCountWidth);
-
-    let currOffset = new vec2(nPolygonX * canvasWidth / polygonCountWidth, nPolygonY * canvasHeight / polygonCountHeight);
-    currOffset = currOffset.subtract(new vec2(canvasWidth * 0.5, canvasHeight * 0.5)).multiply(4);
-
+  for (let i = 0; i < polygonCount; i++) {
+    let o_ = new vec2(Math.random() * canvasWidth, Math.random() * canvasHeight).subtract(new vec2(canvasWidth * 0.5, canvasHeight * 0.5));
     addPolygon({
-    
       vertices: [
-        new vec2(-2, -1),
-        new vec2(-2, 1),
-        new vec2(-1, 2),
-        new vec2(1, 2),
-        new vec2(2, 1),
-        new vec2(2, -1),
-        new vec2(1, -2),
-        new vec2(-1, -2),
-
+        new vec2(-1, -1),
+        new vec2(-1, 1.1),
+        new vec2(1.1, 1),
+        new vec2(1.1, -1.1),
       ],
-      offset: currOffset,
-      size: 20,
+      offset: o_,
+      size: 35,
       attr: 0,
-      color: new Color(25, 55, 225, 255)
+      color: new Color(25, 155, 25, 255)
     });
   }
-  // addPolygon({
-  //   vertices: [
-  //     new vec2(-1, -1),
-  //     new vec2(1, -1),
-  //     new vec2(1, 1),
-  //     new vec2(-1, 1), 
-  //     new vec2(-2, 0)
-  //   ],
-  //   offset: new vec2(0, 0),
-  //   size: 300,
-  //   attr: 0,
-  //   color: new Color(155, 15, 25, 255)
-  // });
-
 
 
 }
