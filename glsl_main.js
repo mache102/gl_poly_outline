@@ -74,12 +74,15 @@ vec2 getTexCoord(uint index) {
   ));
 }
 
-// prepare an array of vertices (length: o_polygon_length)
-ivec2 vertices[255];
+// prepare an array of v (length: o_polygon_length)
+vec2 v[255];
 
 const uint INSIDE_POLYGON = 1u;
 const uint ON_OUTLINE = 2u;
 const uint OUTSIDE_POLYGON = 3u;
+const vec4 INNER_COLOR = vec4(0.65, 0.85, 1.0, 1.0);
+const vec4 OUTLINE_COLOR = vec4(0.0, 0.0, 0.0, 1.0);
+float smoothness = 1.5;
 
 // positive & ccw: outside 
 // negative & ccw: inside
@@ -90,44 +93,20 @@ float distance_impl(vec2 a, vec2 b) {
   return sqrt(pow(a.x - b.x, 2.) + pow(a.y - b.y, 2.));
 }
 
-uint isOnOutline(vec2 uv, uint polygon_length) {
-  bool inside = false;
-
-  for (uint i = 0u; i < polygon_length; i++) {
-    vec2 vertex = vec2(vertices[i]);
-    vec2 next_vertex = vec2(vertices[(i + 1u) % polygon_length]);
-
-    vec2 edge = next_vertex - vertex;
-    vec2 edgeDir = normalize(edge);
-    vec2 normal = normalize(vec2(edge.y, -edge.x));
-
-    vec2 to_vertex = uv - vertex;
-    float distance = dot(normal, to_vertex);
-
-    float projection = dot(to_vertex, edgeDir);
-    bool isOnSegment = projection >= 0.0 && projection <= length(edge);
-
-
-    if (abs(distance) <= u_outline_size) {
-      if (
-          isOnSegment 
-          || distance_impl(uv, vertex) <= u_outline_size 
-          || distance_impl(uv, next_vertex) <= u_outline_size
-        ) {
-        return ON_OUTLINE;
-      }
+float sdPolygon(vec2 p, int length)
+{
+    float d = dot(p-v[0],p-v[0]);
+    float s = 1.0;
+    for( int i=0, j=length-1; i<length; j=i, i++ )
+    {
+        vec2 e = v[j] - v[i];
+        vec2 w =    p - v[i];
+        vec2 b = w - e*clamp( dot(w,e)/dot(e,e), 0.0, 1.0 );
+        d = min( d, dot(b,b) );
+        bvec3 c = bvec3(p.y>=v[i].y,p.y<v[j].y,e.x*w.y>e.y*w.x);
+        if( all(c) || all(not(c)) ) s*=-1.0;  
     }
-
-    bool edgeCrossesRay = (vertex.y > uv.y) != (next_vertex.y > uv.y);
-    if (edgeCrossesRay) {
-      float slope = (next_vertex.x - vertex.x) / (next_vertex.y - vertex.y);
-      float xAtY = vertex.x + slope * (uv.y - vertex.y);
-      if (uv.x < xAtY) {
-        inside = !inside;
-      }
-    }
-  }
-  return inside? INSIDE_POLYGON : OUTSIDE_POLYGON;
+    return s*sqrt(d);
 }
 
 vec4 lerpColor(vec4 a, vec4 b, float t) {
@@ -135,28 +114,30 @@ vec4 lerpColor(vec4 a, vec4 b, float t) {
 }
 
 void main(void) {
-  // retrieve all the vertices from the tex
+  // retrieve all the v from the tex
   for (uint i = 0u; i < o_polygon_length; i++) {
-    vertices[i] = texture(u_vertex_sampler, getTexCoord(o_polygon_start_index + i)).xy + ivec2(u_winres_frag / 2.0);
+    v[i] = vec2(texture(u_vertex_sampler, getTexCoord(o_polygon_start_index + i)).xy) + vec2(u_winres_frag / 2.0);
   }
 
   vec2 fragCoord = gl_FragCoord.xy;
 
-  uint fragmentLocation = isOnOutline(fragCoord, o_polygon_length);
+  // float s = isOnOutline(fragCoord, o_polygon_length);
+  float d = sdPolygon(fragCoord, int(o_polygon_length));
 
-  switch (fragmentLocation) {
-    case INSIDE_POLYGON:
-      outColor = o_color;
-      return;
-    case ON_OUTLINE:
-      outColor = lerpColor(o_color, vec4(0.0, 0.0, 0.0, 1.0), 0.5);
-      return;
-    case OUTSIDE_POLYGON:
-      discard;
-      return;
+  float b1 = max(0., u_outline_size - smoothness);
+  float b2 = u_outline_size + smoothness;
+  float a1 = -u_outline_size - smoothness;
+  float a2 = min(0., u_outline_size + smoothness);
+
+  if (d > 0.) {
+    float s = smoothstep(b1, b2, d);
+    // mix from outline color to transparent
+    outColor = lerpColor(OUTLINE_COLOR, vec4(0.), s);
+  } else {
+    float s = smoothstep(a1, a2, d);
+    // mix from inner color to outline
+    outColor = lerpColor(INNER_COLOR, OUTLINE_COLOR, s);
   }
-
-  outColor = o_color;
 }`;
 
 export { vertexShaderCode, fragmentShaderCode };

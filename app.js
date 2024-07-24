@@ -16,7 +16,7 @@ if (!gl) {
   alert('Unable to initialize WebGL2. Your browser may not support it.');
 }
 
-const outlineSize = 5;
+const outlineSize = 3;
 let shader;
 let vertexTexture;
 let textureSize = 2048; // max 4194304 vertices 
@@ -27,7 +27,8 @@ let startIndex = 0;
 const vertexTextureUnit = 0;
 let renderBoundingBoxes = false;
 
-let polygonCount = 300;
+// change this value to anything above 300 and the fps will drop significantly
+let polygonCount = 100;
 
 let lastTime = 0;
 let frameCount = 0;
@@ -303,9 +304,10 @@ function addData() {
     addPolygon({
       vertices: [
         new vec2(-1, -1),
-        new vec2(-1, 1.1),
+        new vec2(-1, 1.5),
         new vec2(1.1, 1),
-        new vec2(1.1, -1.1),
+        new vec2(1.5, -1.1),
+        new vec2(3.0, -3.0),
       ],
       offset: o_,
       size: 35,
@@ -346,7 +348,7 @@ function createTexture() {
 function init() {
   writeOverlayContent();
 
-  gl.enable(gl.DEPTH_TEST);
+  // gl.enable(gl.DEPTH_TEST);
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
