@@ -12,7 +12,19 @@ canvas.width = 1920;
 canvas.height = 1080;
 
 const gl = canvas.getContext('webgl2', { antialias: true });
-if (!gl) {
+if (gl) {
+  console.log('Renderer:', gl.getParameter(gl.RENDERER));
+  console.log('Vendor:', gl.getParameter(gl.VENDOR));
+  console.log('Max Texture Size:', gl.getParameter(gl.MAX_TEXTURE_SIZE));
+
+  // Check for extensions
+  const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+  if (debugInfo) {
+    console.log('Unmasked Vendor ID:', debugInfo.UNMASKED_VENDOR_WEBGL);
+    console.log('Unmasked Renderer ID:', debugInfo.UNMASKED_RENDERER_WEBGL);
+  }
+
+} else {
   alert('Unable to initialize WebGL2. Your browser may not support it.');
 }
 
