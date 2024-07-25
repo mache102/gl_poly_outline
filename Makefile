@@ -9,7 +9,7 @@ CPP_SRCS = $(wildcard ./src/*.cpp)
 C_SRCS = ../../lib/glad_330/src/glad.c
 OBJS = $(CPP_SRCS:.cpp=.o) $(C_SRCS:.c=.o)
 DEPS = $(CPP_SRCS:.cpp=.d) # Dependency files
-TARGET = test
+TARGET = edgequads
 
 all: $(TARGET)
 

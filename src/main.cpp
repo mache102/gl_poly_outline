@@ -171,7 +171,6 @@ void addPolygon(std::vector<glm::vec2> vertices, glm::vec2 offset, float size, C
   std::vector<OutlineQuad> outlineVertices;
   std::vector<glm::vec2> transformedPos;
   for (uint32_t i = 0; i < vertexCount; i++) {
-    std::cout << "i and i+1: " << i << " " << (i + 1) % vertexCount << std::endl;
     glm::vec2& v = vertices[i];
     glm::vec2& nv = vertices[(i + 1) % vertexCount];
     glm::vec2 pos_ = v * size + offset;
@@ -346,12 +345,13 @@ int main(int argc, char** argv) {
 
     render_timer.start();
     glfwSwapBuffers(window);
-    render_timer.end(true, true);
+    render_timer.end(true, false);
     glfwPollEvents();
 
     tick++;
 
     if (tick % print_every == 0) {
+      std::cout << "tick = " << tick << std::endl;
       render_timer.print_report();
       render_timer.reset_durations();
     }
