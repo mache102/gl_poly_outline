@@ -3,6 +3,7 @@ import { vec2 } from './vec2.js';
 import { vec3 } from './vec3.js'; 
 import { vec4 } from './vec4.js';
 import { Color } from './color.js';
+import { Timer } from './timer.js';
 
 import { POLYGON_BODY, OUTLINE_CORNER, OUTLINE_QUAD, POLYGON_CIRCLE, cornerCoordAttrs, cornerCoords, InstanceIndex, OutlineQuad, getCanvasSize, getCanvasCenter, getRandCoord } from './utils.js';
 
@@ -70,6 +71,8 @@ let vertices = [
 let tick_updates = 0;
 let render_as_circles = 0;
 
+let print_every = 200;
+
 
 /* ******** ******** ******** ******** ******** ******** ******** ********
 
@@ -78,6 +81,7 @@ GLOBALS
 ******** ******** ******** ******** ******** ******** ******** ******** */
 let shader;
 
+let tick = 0;
 // fps calculation
 let lastTime = 0;
 let frameCount = 0;
