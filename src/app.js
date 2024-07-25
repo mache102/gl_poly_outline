@@ -303,6 +303,25 @@ function glbdAll() {
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(p_indices), gl.STATIC_DRAW);
 }
 
+// self.onmessage = function(e) {
+//   const { instance_indices, p_rotations } = e.data;
+//   for (let i = 0; i < instance_indices.length; i++) {
+//     for (let j = 0; j < instance_indices[i].count; j++) {
+//       p_rotations[instance_indices[i].start + j] += 0.01;
+//     }
+//   }
+//   self.postMessage({ p_rotations });
+// };
+
+// const updateWorker = new Worker('updateWorker.js');
+
+// updateWorker.onmessage = function(e) {
+//   const { p_rotations } = e.data;
+//   gl.bindBuffer(gl.ARRAY_BUFFER, pRotationBuffer);
+//   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(p_rotations), gl.STATIC_DRAW);
+// };
+
+
 function renderLoop(timestamp) {
   now = timestamp;
   calculateFPS(now);
@@ -312,6 +331,7 @@ function renderLoop(timestamp) {
 
   if (tick_updates) {
     update();
+    // updateWorker.postMessage({ instance_indices, p_rotations });
   }
   draw();
 
