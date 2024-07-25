@@ -128,3 +128,72 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+builder_demo
+convex_poly
+build/*
+build2/*
+build_2/*
+
+.vscode/*
+
+massif.out.*
+
+math_test 
+
+*.log 
+
+build_mingw
+dependencies
+build_mingw_clang 
+pkg 
+
+zips
+
+build-*/
+build_*/
+build3/
+
+screenshots 
+src/cmake-build-debug
+
+releases/
+docs/*.pdf
+
+edgequads
+
+# to reset: git rm -r --cached .
+# git add .
