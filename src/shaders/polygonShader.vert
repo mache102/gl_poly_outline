@@ -61,35 +61,36 @@ void main(void) {
   vec2 coord = rotateVec2(a_coord, a_rotation) * a_size + a_offset;
 
   switch (getUintBits(v_attr, 0, 1)) {
-    // case POLYGON_BODY: {
-    //   v_offset = vec2(0.);
-    //   break;
-    // }
+    case POLYGON_BODY: {
+      v_offset = vec2(0.);
+      break;
+    }
 
-    // case OUTLINE_CORNER: {
-    //   // ov pos only have 2 possible values: -1 and 1 (can be stored as bits and then converted accordingly)
-    //   int x = getInt(a_attr, 2);
-    //   int y = getInt(a_attr, 3);
-    //   vec2 c_coord = 2. * vec2(x,y) - 1.; // coord (offset) of the vertices that make up the rounded corner's quad
+    case OUTLINE_CORNER: {
+      // ov pos only have 2 possible values: -1 and 1 (can be stored as bits and then converted accordingly)
+      int x = getInt(a_attr, 2);
+      int y = getInt(a_attr, 3);
+      vec2 c_coord = 2. * vec2(x,y) - 1.; // coord (offset) of the vertices that make up the rounded corner's quad
       
-    //   v_offset = coord + half_winres;
+      v_offset = coord + half_winres;
 
-    //   coord += c_coord * u_outline_size;
-    //   break;
-    // }
+      coord += c_coord * u_outline_size;
+      break;
+    }
 
-    // case OUTLINE_QUAD: {
-    //   v_offset = vec2(0.);
+    case OUTLINE_QUAD: {
+      v_offset = vec2(0.);
 
-    //   coord += vec2(
-    //     cos(a_outline_direction + a_rotation), 
-    //     sin(a_outline_direction + a_rotation)
-    //   ) * u_outline_size;
-    //   break;
-    // }
+      coord += vec2(
+        cos(a_outline_direction + a_rotation), 
+        sin(a_outline_direction + a_rotation)
+      ) * u_outline_size;
+      break;
+    }
 
     default: {
-      v_offset = vec2(0.);
+      // debug in frag 
+      v_offset = vec2(123.456, 789.012);
       break;
     }
   }

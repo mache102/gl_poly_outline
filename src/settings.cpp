@@ -24,6 +24,16 @@ namespace settings {
   float minSize = 2;
   float maxSize = 50;
 
+  std::vector<glm::vec2> vertices = 
+      {
+        glm::vec2(-1, -1),
+        glm::vec2(-1, 1.5),
+        glm::vec2(1.1, 1),
+        glm::vec2(1.5, -1.1),
+        glm::vec2(3.0, -3.0),
+      };
+
+
   int64_t tick = 0;
   uint32_t print_every = 200;
 
@@ -105,6 +115,15 @@ namespace settings {
 
       {"print_every", [&](std::istringstream &iss) {
         iss >> settings::print_every;
+      }},
+
+      {"vertices", [&](std::istringstream &iss) {
+        settings::vertices.clear();
+        glm::vec2 v;
+        while (!iss.eof()) {
+          read_vec2(iss, v, false);
+          settings::vertices.push_back(v);
+        }
       }},
 
     };

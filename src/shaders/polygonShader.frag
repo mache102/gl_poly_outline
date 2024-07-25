@@ -38,18 +38,18 @@ int getIntBits(uint value, int start, int end) {
 void main(void) {
 
   switch (getUintBits(v_attr, 0, 1)) {
-    // case POLYGON_BODY:
-    // case OUTLINE_QUAD: {
-    //   fragColor = v_color;
-    //   return;
-    // }
+    case POLYGON_BODY:
+    case OUTLINE_QUAD: {
+      fragColor = v_color;
+      return;
+    }
 
-    // case OUTLINE_CORNER: {
-    //   float s = smoothstep(u_outline_size - u_transition_smoothness, u_outline_size, distance(v_offset, gl_FragCoord.xy));
-    //   fragColor = mix(u_outline_color, vec4(0.), s);
+    case OUTLINE_CORNER: {
+      float s = smoothstep(u_outline_size - u_transition_smoothness, u_outline_size, distance(v_offset, gl_FragCoord.xy));
+      fragColor = mix(u_outline_color, vec4(0.), s);
       
-    //   return;
-    // }
+      return;
+    }
 
     default: {
       // do a checkerboard for debug

@@ -36,6 +36,7 @@ namespace settings {
   extern uint32_t polygonCount;
   extern float minSize;
   extern float maxSize;
+  extern std::vector<glm::vec2> vertices;
 
   extern uint32_t print_every;
 

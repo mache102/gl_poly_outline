@@ -12,6 +12,7 @@
 #include "rgba_color.h"
 #include "timer.h"
 #include "settings.h"
+#include "utils.h"
 
 constexpr int OPENGL_VERSION_MAJOR = 3;
 constexpr int OPENGL_VERSION_MINOR = 3;
@@ -27,72 +28,19 @@ Shader* p_shader = nullptr;
 
 int64_t tick = 0;
 
-// 33 bytes per vertex
 std::vector<glm::vec2> p_coords, p_offsets;
 std::vector<float> p_rotations, p_sizes, p_outline_directions;
 std::vector<uint8_t> p_attrs;
 std::vector<Color> p_colors;
 std::vector<uint32_t> p_indices;
 
-const uint8_t POLYGON_BODY = 0b00000000;
-const uint8_t OUTLINE_CORNER = 0b00000001;
-const uint8_t OUTLINE_QUAD = 0b00000010;
 
-const std::vector<uint8_t> cornerCoordAttrs = {
-  0b00000000,
-  0b00001000,
-  0b00001100,
-  0b00000100
-};
-const std::vector<glm::vec2> cornerCoords = {
-  glm::vec2(-1, -1),
-  glm::vec2(-1, 1),
-  glm::vec2(1, 1),
-  glm::vec2(1, -1)
-};
+std::vector<InstanceIndex> instance_indices;
+
 
 GLuint pVao, pCoordBuffer, pRotationBuffer, pSizeBuffer, pOffsetBuffer, pOutlineDirectionBuffer,
 pAttrBuffer, pColorBuffer, pIndexBuffer;
 
-struct OutlineQuad {
-  OutlineQuad() {
-    v = glm::vec2(0);
-    nv = glm::vec2(0);
-    direction = 0.f;
-  }
-  OutlineQuad(glm::vec2 v, glm::vec2 nv, float direction) {
-    this->v = v;
-    this->nv = nv;
-    this->direction = direction;
-  }
-
-  // apply() only appends to vertices and outline_directions; it is recommended to append other attributes elsewhere
-  void apply(std::vector<glm::vec2>& vertices, std::vector<float>& outline_directions) {
-    /*
-    bottom left -> top left -> top right -> bottom right
-
-    - | +   <--- nv
-      |
-    - | +   <--- v
-      
-    */
-    vertices.push_back(v);
-    vertices.push_back(nv);
-    vertices.push_back(nv);
-    vertices.push_back(v);
-
-    for (int i = 0; i < 2; i++) {
-      outline_directions.push_back(direction + M_PI);
-    }
-    for (int i = 0; i < 2; i++) {
-      outline_directions.push_back(direction);
-    }
-  }
-
-  glm::vec2 v, nv;
-  float direction;
-
-};
 
 
 void pushIndices(std::vector<uint32_t> newIndices, uint32_t offset) {
@@ -287,21 +235,18 @@ int main(int argc, char** argv) {
 
   init();
 
+  instance_indices.resize(polygonCount);
   for (uint32_t i = 0; i < polygonCount; i++) {
     glm::vec2 o = randCoord();
+    instance_indices[i].start = p_coords.size();
     addPolygon(
-      {
-        glm::vec2(-1, -1),
-        glm::vec2(-1, 1.5),
-        glm::vec2(1.1, 1),
-        glm::vec2(1.5, -1.1),
-        glm::vec2(3.0, -3.0),
-      },
+      vertices,
       (i * 2 * M_PI) / 360.0,
       minSize + (maxSize - minSize) * (rand() / (float)RAND_MAX),
       o,    
       polygonColors[i % polygonColors.size()]
     );
+    instance_indices[i].count = p_coords.size() - instance_indices[i].start;
   }
 
   printSizes();
@@ -324,6 +269,18 @@ int main(int argc, char** argv) {
     }
     glClearColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // test rotate
+    for (uint32_t i = 0; i < instance_indices.size(); i++) {
+      for (uint32_t j = 0; j < instance_indices[i].count; j++) {
+        p_rotations[instance_indices[i].start + j] += 0.01;
+      }
+    }
+
+    glBindVertexArray(pVao);
+    glBindBuffer(GL_ARRAY_BUFFER, pRotationBuffer);
+    glBufferData(GL_ARRAY_BUFFER, p_rotations.size() * sizeof(float), p_rotations.data(), GL_STATIC_DRAW);
+    // glBufferSubData(GL_ARRAY_BUFFER, a * sizeof(float), (a+n) * sizeof(float), &p_rotations[a], GL_STATIC_DRAW);
 
     p_shader->use();
     glBindVertexArray(pVao);

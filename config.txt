@@ -14,6 +14,7 @@ polygonColors #3ca4cb #8abc3f #e03e41 #cc669c
 polygonCount 100
 minSize 2
 maxSize 30
+vertices 0.5 -2, 2 -2, 2.8 -1.2, 3.9 0, 2.8 1.2, 2 2, 0 1.5, 0 0
 
 print_every 200
 
