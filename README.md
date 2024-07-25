@@ -1,25 +1,40 @@
 # gl_poly_outline
 
-## WIP 
-## Please check back after 2024-07-26 00:00 UTC 
+## Branch: `opengl_edgequads`
 
-`main` is on `opengl_edgequads` branch; see `webgl_edgequads` branch for WebGL2 (**WIP**)
+Renders 10,000+ outlined 2D polygons in OpenGL at 60 fps.
 
-### Requirements
+This method creates a quad for each edge to serve as outlines, similar to how `GL_LINES` are used in OpenGL. Outline corners are rounded with 
+circles (via quads). 
+
+**For the WebGL implementation, see branch `webgl_edgequads`.**
+
+## Requirements
 - OpenGL 3.3
 - GLFW
-- glad
+- glad (included under `lib/`)
 - glm
 
+## Clone
 
-### Build
+Clone the `opengl_edgequads` branch:
+
+```bash
+git clone -b opengl_edgequads
+```
+
+## Build
 
 ```bash
 make
 ```
 
+## Documentation
+
+Run the program:
+
 ```bash
 ./edgequads
 ```
 
-
+Settings can be configured in `config.txt`.

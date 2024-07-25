@@ -197,3 +197,5 @@ edgequads
 
 # to reset: git rm -r --cached .
 # git add .
+
+notes.txt
