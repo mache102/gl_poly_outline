@@ -7,6 +7,7 @@ namespace settings {
   std::string window_title = "gl_poly_outline";
 
   int seed = 0;
+  int max_fps = 60;
 
   Color bgColor = Color("#dbdbdb");
   Color outlineColor = Color("#484848");
@@ -57,6 +58,10 @@ namespace settings {
 
       {"seed", [&](std::istringstream &iss) {
         iss >> settings::seed;
+      }},
+
+      {"max_fps", [&](std::istringstream &iss) {
+        iss >> settings::max_fps;
       }},
 
       {"bgColor", [&](std::istringstream &iss) {

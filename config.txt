@@ -1,19 +1,19 @@
 winres 1920 1080
 window_title gl_poly_outline
 seed 0
+max_fps 60
 
 bgColor #dbdbdb
 outlineColor #484848
 outlineSize 2.5
-transitionSmoothness 0.5
+transitionSmoothness 1.0
 
 // blue green red purple
 polygonColors #3ca4cb #8abc3f #e03e41 #cc669c
 
-polygonCount 10000
+polygonCount 100
 minSize 2
 maxSize 30
 
-tick 0
 print_every 200
 

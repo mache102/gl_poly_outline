@@ -22,6 +22,7 @@ namespace settings {
   extern std::string window_title;
 
   extern int seed;
+  extern int max_fps;
 
   extern glm::vec2 randCoord();
 

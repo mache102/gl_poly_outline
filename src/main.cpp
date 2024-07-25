@@ -1,5 +1,7 @@
 #include <iostream>
 #include <vector>
+#include <chrono>
+#include <thread>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -25,39 +27,71 @@ Shader* p_shader = nullptr;
 
 int64_t tick = 0;
 
-std::vector<glm::vec2> p_coords;
+// 33 bytes per vertex
+std::vector<glm::vec2> p_coords, p_offsets;
+std::vector<float> p_rotations, p_sizes, p_outline_directions;
 std::vector<uint8_t> p_attrs;
 std::vector<Color> p_colors;
 std::vector<uint32_t> p_indices;
 
-GLuint pVao, pCoordBuffer, pAttrBuffer, pColorBuffer, pIndexBuffer;
+const uint8_t POLYGON_BODY = 0b00000000;
+const uint8_t OUTLINE_CORNER = 0b00000001;
+const uint8_t OUTLINE_QUAD = 0b00000010;
+
+const std::vector<uint8_t> cornerCoordAttrs = {
+  0b00000000,
+  0b00001000,
+  0b00001100,
+  0b00000100
+};
+const std::vector<glm::vec2> cornerCoords = {
+  glm::vec2(-1, -1),
+  glm::vec2(-1, 1),
+  glm::vec2(1, 1),
+  glm::vec2(1, -1)
+};
+
+GLuint pVao, pCoordBuffer, pRotationBuffer, pSizeBuffer, pOffsetBuffer, pOutlineDirectionBuffer,
+pAttrBuffer, pColorBuffer, pIndexBuffer;
 
 struct OutlineQuad {
-
   OutlineQuad() {
     v = glm::vec2(0);
     nv = glm::vec2(0);
-    normal = glm::vec2(0);
+    direction = 0.f;
   }
-  OutlineQuad(glm::vec2 v, glm::vec2 nv, glm::vec2 normal) {
+  OutlineQuad(glm::vec2 v, glm::vec2 nv, float direction) {
     this->v = v;
     this->nv = nv;
-    this->normal = normal;
+    this->direction = direction;
   }
 
-  void apply(std::vector<glm::vec2>& vertices, float size, float outlineSize, glm::vec2 offset) {
-    std::vector<glm::vec2> vertices_ = {
-      v * size + offset - normal * outlineSize,
-      nv * size + offset - normal * outlineSize,
-      nv * size + offset + normal * outlineSize,
-      v * size + offset + normal * outlineSize
-    };
-    for (glm::vec2& vertex : vertices_) {
-      vertices.push_back(vertex);
+  // apply() only appends to vertices and outline_directions; it is recommended to append other attributes elsewhere
+  void apply(std::vector<glm::vec2>& vertices, std::vector<float>& outline_directions) {
+    /*
+    bottom left -> top left -> top right -> bottom right
+
+    - | +   <--- nv
+      |
+    - | +   <--- v
+      
+    */
+    vertices.push_back(v);
+    vertices.push_back(nv);
+    vertices.push_back(nv);
+    vertices.push_back(v);
+
+    for (int i = 0; i < 2; i++) {
+      outline_directions.push_back(direction + M_PI);
+    }
+    for (int i = 0; i < 2; i++) {
+      outline_directions.push_back(direction);
     }
   }
 
-  glm::vec2 v, nv, normal;
+  glm::vec2 v, nv;
+  float direction;
+
 };
 
 
@@ -67,110 +101,157 @@ void pushIndices(std::vector<uint32_t> newIndices, uint32_t offset) {
   }
 }
 
-void addPolygonVertex(glm::vec2 pos, Color color) {
-  p_coords.push_back(pos);
-  p_attrs.push_back(0x00);
-  p_colors.push_back(color);
-}
-
-void addOutlineVertices(glm::vec2 offset, float size) {
-  /*
-  1. store the offset in coord
-
-  2. store the position as bits in attr (bits 1,2)
-    0b00000001,
-    0b00000101,
-    0b00000111,
-    0b00000011
-
-  // 3. store the size in color
-  */
-  std::vector<uint8_t> positions = {
-    0b00000001,
-    0b00000101,
-    0b00000111,
-    0b00000011
-  };
-  // Color sizeAsColor = Color(static_cast<uint32_t>(size));
-
-  pushIndices({0, 1, 2, 0, 2, 3}, p_coords.size());
-
-  for (int i = 0; i < 4; i++) {
-    p_coords.push_back(offset);
-    p_attrs.push_back(positions[i]);
-    p_colors.push_back(outlineColor);
-  }
-}
-
-void addPolygon(std::vector<glm::vec2> vertices, glm::vec2 offset, float size, float rotation, Color color) {
+void addPolygon(std::vector<glm::vec2> vertices, float rotation, float size, glm::vec2 offset, Color color) {
   uint32_t vertexCount = vertices.size();
 
-  // be sure to include the indices!
-  // btw screw concave polygons, you can't just add indices straightforward
-  // convex - your indices will be 0,1,2, 0,2,3, ..., 0,n-2,n-1
-  uint32_t currentPositionsLength = p_coords.size();
+  // in order: polygon itself, outline vertices, outline quads
+
+  // 1. polygon itself
+  uint32_t idx = p_coords.size();
   for (uint32_t i = 0; i < vertexCount - 2; i++) {
-    pushIndices({0, i + 1, i + 2}, currentPositionsLength);
+    pushIndices({0, i + 1, i + 2}, idx);
   }
 
-  // rot all verts
-  for (uint32_t i = 0; i < vertexCount; i++) {
-    glm::vec2& v = vertices[i];
-    vertices[i] = glm::vec2(
-      v.x * cos(rotation) - v.y * sin(rotation),
-      v.x * sin(rotation) + v.y * cos(rotation)
-    );
-  }
-
-  std::vector<OutlineQuad> outlineVertices;
-  std::vector<glm::vec2> transformedPos;
+  std::vector<OutlineQuad> outlineQuads;
   for (uint32_t i = 0; i < vertexCount; i++) {
     glm::vec2& v = vertices[i];
     glm::vec2& nv = vertices[(i + 1) % vertexCount];
-    glm::vec2 pos_ = v * size + offset;
 
-    glm::vec2 grad = glm::normalize(nv - v);
-    glm::vec2 normal = glm::vec2(-grad.y, grad.x);
-    outlineVertices.push_back(OutlineQuad(v, nv, normal));
+    float outline_direction = glm::atan(nv.y - v.y, nv.x - v.x) + M_PI / 2; 
+    outlineQuads.push_back(OutlineQuad(v, nv, outline_direction));
 
-    addPolygonVertex(pos_, color);
-    transformedPos.push_back(pos_);
+    p_coords.push_back(v);
+    p_rotations.push_back(rotation);
+    p_sizes.push_back(size);
+    p_offsets.push_back(offset);
+
+    p_outline_directions.push_back(0.);
+    p_attrs.push_back(POLYGON_BODY);
+    p_colors.push_back(color);
   }
 
-  // outline quads
-  for (OutlineQuad& quad : outlineVertices) {
+  // 2. outline corners
+  for (uint32_t i = 0; i < vertexCount; i++) {
     pushIndices({0, 1, 2, 0, 2, 3}, p_coords.size());
-    quad.apply(p_coords, size, outlineSize, offset);
-    for (int i = 0; i < 4; i++) {
-      p_attrs.push_back(0x00); 
+
+    glm::vec2& v = vertices[i];
+    for (int j = 0; j < 4; j++) {
+      p_coords.push_back(v);
+      p_rotations.push_back(rotation);
+      p_sizes.push_back(size);
+      p_offsets.push_back(offset);
+
+      p_outline_directions.push_back(0.);
+      p_attrs.push_back(cornerCoordAttrs[j] | OUTLINE_CORNER);
       p_colors.push_back(outlineColor);
     }
-      
-
   }
 
-  // outline vertices 
-  for (glm::vec2& pos : transformedPos) {
-    addOutlineVertices(pos, size);
+  // 3. outline quads
+  for (OutlineQuad& quad : outlineQuads) {
+    pushIndices({0, 1, 2, 0, 2, 3}, p_coords.size());
+    quad.apply(p_coords, p_outline_directions);
+
+    for (int i = 0; i < 4; i++) {
+      p_rotations.push_back(rotation);
+      p_sizes.push_back(size);
+      p_offsets.push_back(offset);
+
+      p_attrs.push_back(OUTLINE_QUAD); 
+      p_colors.push_back(outlineColor);
+    }
   }
 }
 
 void clearBuffers() {
   p_coords = {};
+  p_rotations = {};
+  p_sizes = {};
+  p_offsets = {};
+
+  p_outline_directions = {};
   p_attrs = {};
   p_colors = {};
+
   p_indices = {};
 }
 
 void printSizes() {
-  std::cout << "buffer sizes (coord, attr, color, index): {" << p_coords.size() << ", " << p_attrs.size() << ", " << p_colors.size() << ", " << p_indices.size() << "}" << std::endl;
+  std::cout << "buffer sizes (coord, rotation, size, offset, outline_direction, attr, color, index): " 
+    << p_coords.size() << ", " 
+    << p_rotations.size() << ", " 
+    << p_sizes.size() << ", " 
+    << p_offsets.size() << ", " 
+
+    << p_outline_directions.size() << ", " 
+    << p_attrs.size() << ", " 
+    << p_colors.size() << ", " 
+
+    << p_indices.size() 
+    << std::endl;
 }
 
-void glbdAll() {
+void init() {
+  glGenVertexArrays(1, &pVao);
+
+  glGenBuffers(1, &pCoordBuffer);
+  glGenBuffers(1, &pRotationBuffer);
+  glGenBuffers(1, &pSizeBuffer);
+  glGenBuffers(1, &pOffsetBuffer);
+
+  glGenBuffers(1, &pOutlineDirectionBuffer);
+  glGenBuffers(1, &pAttrBuffer);
+  glGenBuffers(1, &pColorBuffer);
+
+  glGenBuffers(1, &pIndexBuffer);
 
   glBindVertexArray(pVao);
   glBindBuffer(GL_ARRAY_BUFFER, pCoordBuffer);
+  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
+  glEnableVertexAttribArray(0);
+
+  glBindBuffer(GL_ARRAY_BUFFER, pRotationBuffer);
+  glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+  glEnableVertexAttribArray(1);
+
+  glBindBuffer(GL_ARRAY_BUFFER, pSizeBuffer);
+  glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+  glEnableVertexAttribArray(2);
+
+  glBindBuffer(GL_ARRAY_BUFFER, pOffsetBuffer);
+  glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
+  glEnableVertexAttribArray(3);
+
+  glBindBuffer(GL_ARRAY_BUFFER, pOutlineDirectionBuffer);
+  glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+  glEnableVertexAttribArray(4);
+
+  glBindBuffer(GL_ARRAY_BUFFER, pAttrBuffer);
+  glVertexAttribIPointer(5, 1, GL_UNSIGNED_BYTE, sizeof(uint8_t), (void*)0);
+  glEnableVertexAttribArray(5);
+
+  glBindBuffer(GL_ARRAY_BUFFER, pColorBuffer);
+  glVertexAttribPointer(6, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Color), (void*)0);
+  glEnableVertexAttribArray(6);
+  
+}
+
+void glbdAll() {
+  glBindVertexArray(pVao);
+  glBindBuffer(GL_ARRAY_BUFFER, pCoordBuffer);
   glBufferData(GL_ARRAY_BUFFER, p_coords.size() * sizeof(glm::vec2), p_coords.data(), GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ARRAY_BUFFER, pRotationBuffer);
+  glBufferData(GL_ARRAY_BUFFER, p_rotations.size() * sizeof(float), p_rotations.data(), GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ARRAY_BUFFER, pSizeBuffer);
+  glBufferData(GL_ARRAY_BUFFER, p_sizes.size() * sizeof(float), p_sizes.data(), GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ARRAY_BUFFER, pOffsetBuffer);
+  glBufferData(GL_ARRAY_BUFFER, p_offsets.size() * sizeof(glm::vec2), p_offsets.data(), GL_STATIC_DRAW);
+
+  glBindBuffer(GL_ARRAY_BUFFER, pOutlineDirectionBuffer);
+  glBufferData(GL_ARRAY_BUFFER, p_outline_directions.size() * sizeof(float), p_outline_directions.data(), GL_STATIC_DRAW);
 
   glBindBuffer(GL_ARRAY_BUFFER, pAttrBuffer);
   glBufferData(GL_ARRAY_BUFFER, p_attrs.size() * sizeof(uint8_t), p_attrs.data(), GL_STATIC_DRAW);
@@ -186,7 +267,7 @@ void glbdAll() {
 int main(int argc, char** argv) {
 
   // fixed seed
-  srand(0);
+  srand(seed);
   GLFWwindow* window = init_glfw();
   if (window == nullptr) {
     return -1;
@@ -204,25 +285,9 @@ int main(int argc, char** argv) {
   p_shader->setFloat("u_outline_size", outlineSize);
   p_shader->setFloat("u_transition_smoothness", transitionSmoothness);
 
-  glGenVertexArrays(1, &pVao);
-  glGenBuffers(1, &pCoordBuffer);
-  glGenBuffers(1, &pAttrBuffer);
-  glGenBuffers(1, &pColorBuffer);
-  glGenBuffers(1, &pIndexBuffer);
-  glBindVertexArray(pVao);
-  glBindBuffer(GL_ARRAY_BUFFER, pCoordBuffer);
-  glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
-  glEnableVertexAttribArray(0);
+  init();
 
-  glBindBuffer(GL_ARRAY_BUFFER, pAttrBuffer);
-  glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(uint8_t), (void*)0);
-  glEnableVertexAttribArray(1);
-
-  glBindBuffer(GL_ARRAY_BUFFER, pColorBuffer);
-  glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Color), (void*)0);
-  glEnableVertexAttribArray(2);
-  
-  for (int i = 0; i < polygonCount; i++) {
+  for (uint32_t i = 0; i < polygonCount; i++) {
     glm::vec2 o = randCoord();
     addPolygon(
       {
@@ -232,9 +297,9 @@ int main(int argc, char** argv) {
         glm::vec2(1.5, -1.1),
         glm::vec2(3.0, -3.0),
       },
-      o,
-      minSize + (maxSize - minSize) * (rand() / (float)RAND_MAX),
       (i * 2 * M_PI) / 360.0,
+      minSize + (maxSize - minSize) * (rand() / (float)RAND_MAX),
+      o,    
       polygonColors[i % polygonColors.size()]
     );
   }
@@ -246,6 +311,8 @@ int main(int argc, char** argv) {
   Timer render_timer = Timer("render", false);
 
   double curr_time, last_time, delta_time;
+  delta_time = 0.; // get rid of an unused var warning
+
   last_time = glfwGetTime();
   while (!glfwWindowShouldClose(window)) {
     curr_time = glfwGetTime();
@@ -273,6 +340,16 @@ int main(int argc, char** argv) {
       std::cout << "tick = " << tick << std::endl;
       render_timer.print_report();
       render_timer.reset_durations();
+    }
+
+    if (max_fps > 0) {
+      float desired_frame_time = 1.0 / max_fps;
+      if (delta_time < desired_frame_time)
+      {
+        float delay_time = desired_frame_time - delta_time;
+        std::chrono::milliseconds delay_ms((int)(delay_time * 1000));
+        std::this_thread::sleep_for(delay_ms);
+      }
     }
   }
 
