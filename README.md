@@ -2,7 +2,7 @@
 
 ## Branch: `webgl_edgequads`
 
-Renders 10,000+ outlined 2D polygons in WebGL at 60 fps.
+Renders 10,000+ outlined 2D polygons in WebGL2 at 60 fps.
 
 This method creates a quad for each edge to serve as outlines, similar to how `GL_LINES` are used in OpenGL. Outline corners are rounded with 
 circles (via quads). 
