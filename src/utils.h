@@ -9,6 +9,7 @@
 extern const uint8_t POLYGON_BODY;
 extern const uint8_t OUTLINE_CORNER;
 extern const uint8_t OUTLINE_QUAD;
+extern const uint8_t POLYGON_CIRCLE;
 
 extern const std::vector<uint8_t> cornerCoordAttrs;
 extern const std::vector<glm::vec2> cornerCoords;

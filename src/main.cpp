@@ -111,6 +111,26 @@ void addPolygon(std::vector<glm::vec2> vertices, float rotation, float size, glm
   }
 }
 
+void addCircle(float size, glm::vec2 offset, Color color) {
+  // circles only need the polygon itself
+  // use std::vector<glm::vec2> cornerCoords btw
+
+  // 1. polygon itself
+  uint32_t idx = p_coords.size();
+  pushIndices({0, 1, 2, 0, 2, 3}, idx);
+
+  for (uint32_t i = 0; i < 4; i++) {
+    p_coords.push_back(cornerCoords[i]);
+    p_rotations.push_back(0.); // interesting
+    p_sizes.push_back(size);
+    p_offsets.push_back(offset);
+
+    p_outline_directions.push_back(0.);
+    p_attrs.push_back(POLYGON_CIRCLE);
+    p_colors.push_back(color);
+  }
+}
+
 void clearBuffers() {
   p_coords = {};
   p_rotations = {};
@@ -262,13 +282,22 @@ int main(int argc, char** argv) {
   for (uint32_t i = 0; i < polygonCount; i++) {
     glm::vec2 o = randCoord();
     instance_indices[i].start = p_coords.size();
-    addPolygon(
-      vertices,
-      (i * 2 * M_PI) / 360.0,
-      minSize + (maxSize - minSize) * (rand() / (float)RAND_MAX),
-      o,    
-      polygonColors[i % polygonColors.size()]
-    );
+
+    if (!render_as_circles) {
+      addPolygon(
+        vertices,
+        (i * 2 * M_PI) / 360.0,
+        minSize + (maxSize - minSize) * (rand() / (float)RAND_MAX),
+        o,    
+        polygonColors[i % polygonColors.size()]
+      );
+    } else {
+      addCircle(
+        minSize + (maxSize - minSize) * (rand() / (float)RAND_MAX),
+        o,    
+        polygonColors[i % polygonColors.size()]
+      );
+    }
     instance_indices[i].count = p_coords.size() - instance_indices[i].start;
   }
 
@@ -379,7 +408,7 @@ bool init_opengl() {
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   // no vsync
-  glfwSwapInterval(0);
+  glfwSwapInterval(vsync);
 
   return true;
 }

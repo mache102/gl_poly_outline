@@ -3,6 +3,7 @@
 const uint8_t POLYGON_BODY = 0b00000000;
 const uint8_t OUTLINE_CORNER = 0b00000001;
 const uint8_t OUTLINE_QUAD = 0b00000010;
+const uint8_t POLYGON_CIRCLE = 0b00000011;
 
 const std::vector<uint8_t> cornerCoordAttrs = {
   0b00000000,

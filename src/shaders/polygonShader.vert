@@ -12,10 +12,12 @@ layout (location = 6) in vec4 a_color;
 const uint POLYGON_BODY = 0u;
 const uint OUTLINE_CORNER = 1u;
 const uint OUTLINE_QUAD = 2u;
+const uint POLYGON_CIRCLE = 3u;
 
 flat out uint v_attr;
 out vec4 v_color;
 out vec2 v_offset;
+out float v_size;
 
 uniform vec2 u_winres;
 uniform float u_outline_size;
@@ -51,6 +53,8 @@ vec2 rotateVec2(vec2 v, float angle) {
 void main(void) {
   v_attr = a_attr;
   v_color = a_color;
+  v_offset = vec2(0.); // only used for OUTLINE_CORNER
+  v_size = a_size; // only used for OUTLINE_CORNER
 
   // order: rotate, scale (size), translate (offset)
 
@@ -58,11 +62,11 @@ void main(void) {
   // xy + half_winres: to gl_FragCoord space: (0,0) to (winres.x, winres.y)
   // xy / half_winres: to NDC [-1, 1] space
   vec2 half_winres = u_winres / 2.0;
-  vec2 coord = rotateVec2(a_coord, a_rotation) * a_size + a_offset;
+  vec2 coord = vec2(0.);
 
   switch (getUintBits(v_attr, 0, 1)) {
     case POLYGON_BODY: {
-      v_offset = vec2(0.);
+      coord = rotateVec2(a_coord, a_rotation) * a_size + a_offset;
       break;
     }
 
@@ -72,6 +76,7 @@ void main(void) {
       int y = getInt(a_attr, 3);
       vec2 c_coord = 2. * vec2(x,y) - 1.; // coord (offset) of the vertices that make up the rounded corner's quad
       
+      coord = rotateVec2(a_coord, a_rotation) * a_size + a_offset;
       v_offset = coord + half_winres;
 
       coord += c_coord * u_outline_size;
@@ -79,8 +84,7 @@ void main(void) {
     }
 
     case OUTLINE_QUAD: {
-      v_offset = vec2(0.);
-
+      coord = rotateVec2(a_coord, a_rotation) * a_size + a_offset;
       coord += vec2(
         cos(a_outline_direction + a_rotation), 
         sin(a_outline_direction + a_rotation)
@@ -88,8 +92,17 @@ void main(void) {
       break;
     }
 
+    case POLYGON_CIRCLE: {
+      // need the extra size for the outline
+      // also why coord's initial calcs aren't the same for all cases
+      coord = a_coord * (a_size + u_outline_size) + a_offset;
+      v_offset = a_offset + half_winres;
+      break;
+    }
+
     default: {
       // debug in frag 
+      coord = rotateVec2(a_coord, a_rotation) * a_size + a_offset;
       v_offset = vec2(123.456, 789.012);
       break;
     }

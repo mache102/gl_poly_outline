@@ -19,6 +19,7 @@ namespace settings {
   extern glm::vec2 winres;
   extern float aspect_ratio;
 
+  extern bool vsync;
   extern std::string window_title;
 
   extern int seed;
@@ -39,7 +40,8 @@ namespace settings {
   extern std::vector<glm::vec2> vertices;
 
   extern uint32_t print_every;
-  extern uint8_t tick_updates;
+  extern bool tick_updates;
+  extern bool render_as_circles;
 
   glm::vec2 randCoord();
 

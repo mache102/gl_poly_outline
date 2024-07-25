@@ -2,6 +2,8 @@ winres 1920 1080
 window_title gl_poly_outline
 seed 0
 max_fps 60
+// note: render time (ms) will be measured at or higher than monitor refresh rate if vsync is enabled
+vsync 0
 
 bgColor #dbdbdb
 outlineColor #484848
@@ -15,7 +17,9 @@ polygonCount 10000
 minSize 2
 maxSize 30
 vertices 0.5 -2, 2 -2, 2.8 -1.2, 3.9 0, 2.8 1.2, 2 2, 0 1.5, 0 0
-tick_updates 0
+tick_updates 1
+render_as_circles 0
+
 
 print_every 200
 

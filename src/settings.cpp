@@ -4,6 +4,7 @@ namespace settings {
   glm::vec2 winres(1920,1080); 
   float aspect_ratio = winres.x / winres.y;
 
+  bool vsync = false; 
   std::string window_title = "gl_poly_outline";
 
   int seed = 0;
@@ -36,7 +37,8 @@ namespace settings {
 
   int64_t tick = 0;
   uint32_t print_every = 200;
-  uint8_t tick_updates = 1;
+  bool tick_updates = 1;
+  bool render_as_circles = 0;
 
   glm::vec2 randCoord() {
     // -winres/2 to winres/2
@@ -61,6 +63,10 @@ namespace settings {
     std::unordered_map<std::string, std::function<void(std::istringstream &)>> token_actions = {
       {"winres", [&](std::istringstream &iss) {
         iss >> settings::winres.x >> settings::winres.y;
+      }},
+
+      {"vsync", [&](std::istringstream &iss) {
+        iss >> settings::vsync;
       }},
 
       {"window_title", [&](std::istringstream &iss) {
@@ -129,8 +135,11 @@ namespace settings {
 
       {"tick_updates", [&](std::istringstream &iss) {
         iss >> settings::tick_updates;
-      }}
+      }},
 
+      {"render_as_circles", [&](std::istringstream &iss) {
+        iss >> settings::render_as_circles;
+      }}
     };
 
     while (std::getline(file, line))
