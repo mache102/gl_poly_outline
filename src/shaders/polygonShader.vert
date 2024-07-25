@@ -29,14 +29,17 @@ void main(void) {
 
   // is outline vertex
   if (getBool(a_attr, 0)) {
-    // ov pos only have 2 possible values: -1 and 1
+    // ov pos only have 2 possible values: -1 and 1 (can be stored as bits and then converted accordingly)
     int x = getInt(a_attr, 1);
     int y = getInt(a_attr, 2);
     vec2 coord = 2. * vec2(x,y) - 1.;
+
+    // a_coord is the offset for outline vertices
     gl_Position = vec4((a_coord + u_outline_size * coord) / (u_winres / 2.0), 0.0, 1.0);
 
     v_offset = a_coord + u_winres / 2.0;
   } else {
+    // v_offset isn't needed for regular verts
     v_offset = vec2(0.0, 0.0);
     gl_Position = vec4(a_coord / (u_winres / 2.0), 0.0, 1.0);
   }

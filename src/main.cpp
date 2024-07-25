@@ -61,6 +61,9 @@ float outlineSize = 2.0;
 uint32_t polygonCount = 10000;
 float size = 15;
 
+int64_t tick = 0;
+uint32_t print_every = 200;
+
 std::vector<glm::vec2> p_coords;
 std::vector<uint8_t> p_attrs;
 std::vector<Color> p_colors;
@@ -343,8 +346,15 @@ int main(int argc, char** argv) {
 
     render_timer.start();
     glfwSwapBuffers(window);
-    render_timer.end();
+    render_timer.end(true, true);
     glfwPollEvents();
+
+    tick++;
+
+    if (tick % print_every == 0) {
+      render_timer.print_report();
+      render_timer.reset_durations();
+    }
   }
 
   glfwTerminate();
