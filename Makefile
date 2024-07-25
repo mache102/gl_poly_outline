@@ -1,12 +1,12 @@
 # make && ./starter
 
 CC = g++
-CFLAGS = -std=c++17 -Wall -MMD -I../../lib/glad_330/include
+CFLAGS = -std=c++17 -Wall -MMD -I./lib/glad_330/include
 
 LIBS = -L/usr/lib64 -lGL -lX11 -lGLU -lOpenGL -lglfw
 
-CPP_SRCS = $(wildcard ./src/*.cpp)
-C_SRCS = ../../lib/glad_330/src/glad.c
+CPP_SRCS = $(wildcard ./src/*.cpp) $(wildcard ./src/*/*.cpp)
+C_SRCS = ./lib/glad_330/src/glad.c
 OBJS = $(CPP_SRCS:.cpp=.o) $(C_SRCS:.c=.o)
 DEPS = $(CPP_SRCS:.cpp=.d) # Dependency files
 TARGET = edgequads

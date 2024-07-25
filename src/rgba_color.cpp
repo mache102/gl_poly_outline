@@ -12,6 +12,10 @@ Color::Color(std::string str) {
   if (str[0] == '#') {
     // #RRGGBBAA
     str = str.substr(1);
+    // if size 6 just add FF
+    if (str.size() == 6) {
+      str += "FF";
+    }
     if (str.size() != 8) {
       throw std::invalid_argument("Hex color must be 8 characters long (RRGGBBAA)");
     }

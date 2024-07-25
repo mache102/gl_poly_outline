@@ -21,67 +21,16 @@ bool init_opengl();
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void error_callback(int error, const char* description);
 
-#if OPENGL_VERSION_MAJOR >= 4
-void GLAPIENTRY message_callback(
-  GLenum source,
-  GLenum type,
-  GLuint id,
-  GLenum severity,
-  GLsizei length,
-  const GLchar* message,
-  const void* userParam
-) {
-  std::string SEVERITY = "";
-  switch (severity) {
-  case GL_DEBUG_SEVERITY_LOW:
-    SEVERITY = "LOW";
-    break;
-  case GL_DEBUG_SEVERITY_MEDIUM:
-    SEVERITY = "MEDIUM";
-    break;
-  case GL_DEBUG_SEVERITY_HIGH:
-    SEVERITY = "HIGH";
-    break;
-  case GL_DEBUG_SEVERITY_NOTIFICATION:
-    SEVERITY = "NOTIFICATION";
-    break;
-  }
-  fprintf(stderr, "GL CALLBACK: %s type = 0x%x, severity = %s, message = %s\n",
-    type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : "",
-    type, SEVERITY.c_str(), message);
-}
-#endif
-
 Shader* p_shader = nullptr; 
-Shader* ov_shader = nullptr;
-
-Color outlineColor = Color(255, 0, 0, 255);
-float outlineSize = 2.0;
-
-uint32_t polygonCount = 10000;
-float size = 15;
 
 int64_t tick = 0;
-uint32_t print_every = 200;
 
 std::vector<glm::vec2> p_coords;
 std::vector<uint8_t> p_attrs;
 std::vector<Color> p_colors;
 std::vector<uint32_t> p_indices;
 
-std::vector<glm::vec2> ov_positions = {
-  glm::vec2(-1, -1),
-  glm::vec2(-1, 1),
-  glm::vec2(1, 1),
-  glm::vec2(-1, -1),
-  glm::vec2(1, 1),
-  glm::vec2(1, -1)
-};
-
-std::vector<glm::vec2> ov_offsets = {};
-
 GLuint pVao, pCoordBuffer, pAttrBuffer, pColorBuffer, pIndexBuffer;
-GLuint ovVao, ovPositionBuffer, ovOffsetBuffer;
 
 struct OutlineQuad {
 
@@ -106,8 +55,6 @@ struct OutlineQuad {
     for (glm::vec2& vertex : vertices_) {
       vertices.push_back(vertex);
     }
-
-    // std::cout << "4 coords: { (" << vertices_[0].x << ", " << vertices_[0].y << "), (" << vertices_[1].x << ", " << vertices_[1].y << "), (" << vertices_[2].x << ", " << vertices_[2].y << "), (" << vertices_[3].x << ", " << vertices_[3].y << ") }\n";
   }
 
   glm::vec2 v, nv, normal;
@@ -131,10 +78,10 @@ void addOutlineVertices(glm::vec2 offset, float size) {
   1. store the offset in coord
 
   2. store the position as bits in attr (bits 1,2)
-  0b00000001
-  0b00000011
-  0b00000101
-  0b00000111
+    0b00000001,
+    0b00000101,
+    0b00000111,
+    0b00000011
 
   // 3. store the size in color
   */
@@ -151,12 +98,11 @@ void addOutlineVertices(glm::vec2 offset, float size) {
   for (int i = 0; i < 4; i++) {
     p_coords.push_back(offset);
     p_attrs.push_back(positions[i]);
-    // p_colors.push_back(sizeAsColor);
     p_colors.push_back(outlineColor);
   }
 }
 
-void addPolygon(std::vector<glm::vec2> vertices, glm::vec2 offset, float size, Color color) {
+void addPolygon(std::vector<glm::vec2> vertices, glm::vec2 offset, float size, float rotation, Color color) {
   uint32_t vertexCount = vertices.size();
 
   // be sure to include the indices!
@@ -167,7 +113,15 @@ void addPolygon(std::vector<glm::vec2> vertices, glm::vec2 offset, float size, C
     pushIndices({0, i + 1, i + 2}, currentPositionsLength);
   }
 
-  // uint32_t ovOffsetsSize = ov_offsets.size();
+  // rot all verts
+  for (uint32_t i = 0; i < vertexCount; i++) {
+    glm::vec2& v = vertices[i];
+    vertices[i] = glm::vec2(
+      v.x * cos(rotation) - v.y * sin(rotation),
+      v.x * sin(rotation) + v.y * cos(rotation)
+    );
+  }
+
   std::vector<OutlineQuad> outlineVertices;
   std::vector<glm::vec2> transformedPos;
   for (uint32_t i = 0; i < vertexCount; i++) {
@@ -175,15 +129,12 @@ void addPolygon(std::vector<glm::vec2> vertices, glm::vec2 offset, float size, C
     glm::vec2& nv = vertices[(i + 1) % vertexCount];
     glm::vec2 pos_ = v * size + offset;
 
-    // even w/ size and offset applied, the gradient between the vertices will be the same
     glm::vec2 grad = glm::normalize(nv - v);
     glm::vec2 normal = glm::vec2(-grad.y, grad.x);
     outlineVertices.push_back(OutlineQuad(v, nv, normal));
 
-    // ov_offsets.push_back(pos_);
     addPolygonVertex(pos_, color);
     transformedPos.push_back(pos_);
-
   }
 
   // outline quads
@@ -209,8 +160,10 @@ void clearBuffers() {
   p_attrs = {};
   p_colors = {};
   p_indices = {};
+}
 
-  // ov_offsets = {};
+void printSizes() {
+  std::cout << "buffer sizes (coord, attr, color, index): {" << p_coords.size() << ", " << p_attrs.size() << ", " << p_colors.size() << ", " << p_indices.size() << "}" << std::endl;
 }
 
 void glbdAll() {
@@ -227,14 +180,8 @@ void glbdAll() {
 
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pIndexBuffer);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, p_indices.size() * sizeof(uint32_t), p_indices.data(), GL_STATIC_DRAW);
-
-  // glBindVertexArray(ovVao);
-  // glBindBuffer(GL_ARRAY_BUFFER, ovPositionBuffer);
-  // glBufferData(GL_ARRAY_BUFFER, ov_positions.size() * sizeof(glm::vec2), ov_positions.data(), GL_STATIC_DRAW);
-
-  // glBindBuffer(GL_ARRAY_BUFFER, ovOffsetBuffer);
-  // glBufferData(GL_ARRAY_BUFFER, ov_offsets.size() * sizeof(glm::vec2), ov_offsets.data(), GL_STATIC_DRAW);
 }
+
 
 int main(int argc, char** argv) {
 
@@ -248,30 +195,20 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  parse_config("./config.txt");
+
   p_shader = new Shader("./src/shaders/polygonShader.vert", "./src/shaders/polygonShader.frag");
   p_shader->use();
   p_shader->setVec2("u_winres", winres);  
   p_shader->setVec4("u_outline_color", outlineColor.rgba(true));
   p_shader->setFloat("u_outline_size", outlineSize);
-
-
-  // ov_shader = new Shader("./src/shaders/outlineVertexShader.vert", "./src/shaders/outlineVertexShader.frag");
-  // ov_shader->use();
-  // ov_shader->setVec2("u_winres", winres);
-  // ov_shader->setVec4("u_color", outlineColor.rgba(true));
-  // ov_shader->setFloat("u_outline_size", outlineSize);
-
+  p_shader->setFloat("u_transition_smoothness", transitionSmoothness);
 
   glGenVertexArrays(1, &pVao);
   glGenBuffers(1, &pCoordBuffer);
   glGenBuffers(1, &pAttrBuffer);
   glGenBuffers(1, &pColorBuffer);
   glGenBuffers(1, &pIndexBuffer);
-
-  // glGenVertexArrays(1, &ovVao);
-  // glGenBuffers(1, &ovPositionBuffer);
-  // glGenBuffers(1, &ovOffsetBuffer);
-
   glBindVertexArray(pVao);
   glBindBuffer(GL_ARRAY_BUFFER, pCoordBuffer);
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
@@ -284,24 +221,9 @@ int main(int argc, char** argv) {
   glBindBuffer(GL_ARRAY_BUFFER, pColorBuffer);
   glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Color), (void*)0);
   glEnableVertexAttribArray(2);
-
-  // glBindVertexArray(ovVao);
-  // glBindBuffer(GL_ARRAY_BUFFER, ovPositionBuffer);
-  // glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
-  // glEnableVertexAttribArray(0);
-
-  // glBindBuffer(GL_ARRAY_BUFFER, ovOffsetBuffer);
-  // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), (void*)0);
-  // glEnableVertexAttribArray(1);
-
-  // glVertexAttribDivisor(1, 1);
   
   for (int i = 0; i < polygonCount; i++) {
-    glm::vec2 o = glm::vec2(
-      std::fmod((float)rand(), winres.x),
-      std::fmod((float)rand(), winres.y)
-    ) - glm::vec2(winres.x * 0.5, winres.y * 0.5);
-
+    glm::vec2 o = randCoord();
     addPolygon(
       {
         glm::vec2(-1, -1),
@@ -311,11 +233,13 @@ int main(int argc, char** argv) {
         glm::vec2(3.0, -3.0),
       },
       o,
-      size,
-      Color(0, 200, 0, 255)
+      minSize + (maxSize - minSize) * (rand() / (float)RAND_MAX),
+      (i * 2 * M_PI) / 360.0,
+      polygonColors[i % polygonColors.size()]
     );
   }
 
+  printSizes();
 
   glbdAll();
   
@@ -331,17 +255,12 @@ int main(int argc, char** argv) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, true);
     }
-    glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
+    glClearColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     p_shader->use();
     glBindVertexArray(pVao);
     glDrawElements(GL_TRIANGLES, p_indices.size(), GL_UNSIGNED_INT, 0);
-
-    // ov_shader->use();
-    // glBindVertexArray(ovVao);
-    // glDrawArraysInstanced(GL_TRIANGLES, 0, ov_positions.size(), ov_offsets.size());
-
 
     render_timer.start();
     glfwSwapBuffers(window);
@@ -400,16 +319,7 @@ bool init_opengl() {
   }
   std::cout << "OpenGL Version " << GLVersion.major << "." << GLVersion.minor << " loaded\n";
 
-  #if OPENGL_VERSION_MAJOR >= 4
-    glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, nullptr, GL_FALSE);
-    glDebugMessageCallback(message_callback, 0);
-  #endif
-
-  // glEnable(GL_DEPTH_TEST);
-
   glEnable(GL_BLEND);
-
   glEnable(GL_MULTISAMPLE);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -428,9 +338,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height){
 
   p_shader->use();
   p_shader->setVec2("u_winres", winres);
-
-  // ov_shader->use();
-  // ov_shader->setVec2("u_winres", winres);
 }
 
 

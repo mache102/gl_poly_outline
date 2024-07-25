@@ -10,6 +10,7 @@ out vec2 v_offset;
 
 uniform vec2 u_winres;
 uniform float u_outline_size;
+uniform float u_transition_smoothness;
 
 bool getBool(uint value, int bit) {
   return (value & (1u << uint(bit))) != 0u;
@@ -35,7 +36,7 @@ void main(void) {
     vec2 coord = 2. * vec2(x,y) - 1.;
 
     // a_coord is the offset for outline vertices
-    gl_Position = vec4((a_coord + u_outline_size * coord) / (u_winres / 2.0), 0.0, 1.0);
+    gl_Position = vec4((a_coord + (u_outline_size + 2. * u_transition_smoothness) * coord) / (u_winres / 2.0), 0.0, 1.0);
 
     v_offset = a_coord + u_winres / 2.0;
   } else {
