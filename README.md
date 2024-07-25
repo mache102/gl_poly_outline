@@ -1,5 +1,4 @@
-# webgl_poly_outline
+# gl_poly_outline
 
-Run `index.html` from Live Server in VS Code
-
-For whatever reason the FPS tanks with as little as 100 polygons, which does not occur in core OpenGL with the same polygon SDF and tenfold the polygons
+**This branch uses polygon SDFs which do not scale well when many polygons are present (fps drops below 60 with as little as 100 polygons)**
+**See `webgl_edgequads` for a more efficient outline method**
