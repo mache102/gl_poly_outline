@@ -39,6 +39,7 @@ namespace settings {
   extern std::vector<glm::vec2> vertices;
 
   extern uint32_t print_every;
+  extern uint8_t tick_updates;
 
   glm::vec2 randCoord();
 

@@ -211,6 +211,29 @@ void glbdAll() {
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, p_indices.size() * sizeof(uint32_t), p_indices.data(), GL_STATIC_DRAW);
 }
 
+void update() {
+    // test rotate
+  for (uint32_t i = 0; i < instance_indices.size(); i++) {
+    // -1 to +1
+    // glm::vec2 randomOffset = glm::vec2(
+    //   (float)rand() / RAND_MAX * 2 - 1,
+    //   (float)rand() / RAND_MAX * 2 - 1
+    // );
+    for (uint32_t j = 0; j < instance_indices[i].count; j++) {
+      p_rotations[instance_indices[i].start + j] += 0.01;
+
+      // p_offsets[instance_indices[i].start + j] += randomOffset;
+    }
+  }
+
+  glBindVertexArray(pVao);
+  glBindBuffer(GL_ARRAY_BUFFER, pRotationBuffer);
+  glBufferData(GL_ARRAY_BUFFER, p_rotations.size() * sizeof(float), p_rotations.data(), GL_STATIC_DRAW);
+  // glBufferSubData(GL_ARRAY_BUFFER, a * sizeof(float), (a+n) * sizeof(float), &p_rotations[a], GL_STATIC_DRAW);
+
+  // glBindBuffer(GL_ARRAY_BUFFER, pOffsetBuffer);
+  // glBufferData(GL_ARRAY_BUFFER, p_offsets.size() * sizeof(glm::vec2), p_offsets.data(), GL_STATIC_DRAW);
+}
 
 int main(int argc, char** argv) {
 
@@ -254,6 +277,7 @@ int main(int argc, char** argv) {
   glbdAll();
   
   Timer render_timer = Timer("render", false);
+  Timer update_timer = Timer("update", false);  
 
   double curr_time, last_time, delta_time;
   delta_time = 0.; // get rid of an unused var warning
@@ -270,17 +294,11 @@ int main(int argc, char** argv) {
     glClearColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // test rotate
-    for (uint32_t i = 0; i < instance_indices.size(); i++) {
-      for (uint32_t j = 0; j < instance_indices[i].count; j++) {
-        p_rotations[instance_indices[i].start + j] += 0.01;
-      }
+    update_timer.start();
+    if (tick_updates > 0) {
+      update();
     }
-
-    glBindVertexArray(pVao);
-    glBindBuffer(GL_ARRAY_BUFFER, pRotationBuffer);
-    glBufferData(GL_ARRAY_BUFFER, p_rotations.size() * sizeof(float), p_rotations.data(), GL_STATIC_DRAW);
-    // glBufferSubData(GL_ARRAY_BUFFER, a * sizeof(float), (a+n) * sizeof(float), &p_rotations[a], GL_STATIC_DRAW);
+    update_timer.end(true, false);
 
     p_shader->use();
     glBindVertexArray(pVao);
@@ -295,8 +313,11 @@ int main(int argc, char** argv) {
 
     if (tick % print_every == 0) {
       std::cout << "tick = " << tick << std::endl;
+      update_timer.print_report();
+      update_timer.reset_durations();
       render_timer.print_report();
       render_timer.reset_durations();
+
     }
 
     if (max_fps > 0) {

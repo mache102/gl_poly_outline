@@ -36,6 +36,7 @@ namespace settings {
 
   int64_t tick = 0;
   uint32_t print_every = 200;
+  uint8_t tick_updates = 1;
 
   glm::vec2 randCoord() {
     // -winres/2 to winres/2
@@ -125,6 +126,10 @@ namespace settings {
           settings::vertices.push_back(v);
         }
       }},
+
+      {"tick_updates", [&](std::istringstream &iss) {
+        iss >> settings::tick_updates;
+      }}
 
     };
 
