@@ -150,6 +150,10 @@ export class Color {
     return new vec4(this.r, this.g, this.b, this.a);
   }
 
+  normalize() {
+    return [this.r / 255, this.g / 255, this.b / 255, this.a / 255];
+  }
+
   print() {
     console.log(`rgba: (${this.r}, ${this.g}, ${this.b}, ${this.a})`);
   }
