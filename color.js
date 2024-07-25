@@ -172,6 +172,10 @@ export class Color {
     return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;
   }
 
+  toNormalizedVec4() {
+    return new vec4(this.r, this.g, this.b, this.a).divide(255);
+  }
+
   static getColor(name) {
     if (!Color.cmap.has(name)) {
       console.error(`Error: Color name "${name}" not found in cmap, returning Color(0, 0, 0, 255) instead`);
