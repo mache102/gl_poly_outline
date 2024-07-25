@@ -7,7 +7,7 @@ import { Timer } from './timer.js';
 
 import { POLYGON_BODY, OUTLINE_CORNER, OUTLINE_QUAD, POLYGON_CIRCLE, cornerCoordAttrs, cornerCoords, InstanceIndex, OutlineQuad, getCanvasSize, getCanvasCenter, getRandCoord } from './utils.js';
 
-import { polygonShader_vert, polygonShader_frag } from '../shaders/polygonShader.js';
+import { polygonShader_vert, polygonShader_frag } from './shaders/polygonShader.js';
 
 const canvas = document.getElementById('game-canvas');
 
