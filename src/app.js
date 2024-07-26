@@ -360,7 +360,8 @@ function init() {
   writeOverlayContent();
 
   gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
   shader = new Shader(gl, polygonShader_vert, polygonShader_frag);
   shader.use();

@@ -136,3 +136,5 @@ notes.txt
 .vscode
 
 lib
+
+src/file_reader/
