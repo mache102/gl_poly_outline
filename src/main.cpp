@@ -406,7 +406,8 @@ bool init_opengl() {
 
   glEnable(GL_BLEND);
   glEnable(GL_MULTISAMPLE);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
   // no vsync
   glfwSwapInterval(vsync);
