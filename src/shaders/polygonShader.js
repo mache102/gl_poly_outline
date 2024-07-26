@@ -143,6 +143,10 @@ const uint OUTLINE_CORNER = 1u;
 const uint OUTLINE_QUAD = 2u;
 const uint POLYGON_CIRCLE = 3u;
 
+// circles are smoothstepped on both sides of the outline, whereas outline quads are only applied msaa 
+// this slight correct slightly thickens circle outlines inwards to make them look consistent with outline quads
+float outline_correction = -1.0;
+
 bool getBool(uint value, int bit) {
   return (value & (1u << uint(bit))) != 0u;
 }
@@ -191,7 +195,7 @@ void main(void) {
     case POLYGON_CIRCLE: {
       float d = distance(v_offset, gl_FragCoord.xy);
 
-      float r1 = v_size - u_outline_size;
+      float r1 = v_size - u_outline_size + outline_correction;
 
       // circle inner
       if (d < r1) {
@@ -203,7 +207,7 @@ void main(void) {
 
       // smoothstep from inner to outline
       if (d < v_size) {
-        float r2 = v_size - u_outline_size + u_transition_smoothness;
+        float r2 = v_size - u_outline_size + u_transition_smoothness + outline_correction;
         float s = smoothstep(r1, r2, d);
         fragColor = mix(v_color, outline_color, s);
         return;

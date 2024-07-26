@@ -70,7 +70,7 @@ let vertices = [
 ];
 
 let tick_updates = 0;
-let render_as_circles = 0;
+// let render_as_circles = 0;
 
 let print_every = 200;
 
@@ -195,7 +195,7 @@ function addCircle({size, offset, color}) {
   // use cornerCoords btw
 
   // 1. polygon itself
-  let idx = p_coords.length;
+  let idx = p_coords.length / 2;
   pushIndices([0, 1, 2, 0, 2, 3], idx);
 
   for (let i = 0; i < 4; i++) {
@@ -376,7 +376,7 @@ function init() {
     let o = getRandCoord(canvas);
     instance_indices.push(new InstanceIndex(p_coords.length, 0));
 
-    if (!render_as_circles) {
+    if (i % 2 === 0) {
       addPolygon({
         vertices: vertices,
         rotation: i * 2 * Math.PI / 360.0,
