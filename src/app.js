@@ -44,6 +44,7 @@ let bgColor = new Color("#dbdbdb");
 let outlineColor = new Color("#484848");
 let outlineSize = 2.5;
 let transitionSmoothness = 1.0;
+let blendFactor = 0.6;
 
 let polygonColors = [
   new Color("#3ca4cb"),
@@ -168,7 +169,7 @@ function addPolygon({vertices, rotation, size, offset, color}) {
 
       p_outline_directions.push(0.);
       p_attrs.push(cornerCoordAttrs[j] | OUTLINE_CORNER);
-      p_colors.push(outlineColor.r, outlineColor.g, outlineColor.b, outlineColor.a);
+      p_colors.push(color.r, color.g, color.b, color.a);
     }
   }
 
@@ -184,7 +185,7 @@ function addPolygon({vertices, rotation, size, offset, color}) {
       p_offsets.push(offset.x, offset.y);
 
       p_attrs.push(OUTLINE_QUAD);
-      p_colors.push(outlineColor.r, outlineColor.g, outlineColor.b, outlineColor.a);
+      p_colors.push(color.r, color.g, color.b, color.a);
     }
   }
 }
@@ -367,6 +368,7 @@ function init() {
   shader.setVec4("u_outline_color", outlineColor.rgba(true));
   shader.setFloat("u_outline_size", outlineSize);
   shader.setFloat("u_transition_smoothness", transitionSmoothness);
+  shader.setFloat("u_blend_factor", blendFactor);
 
   initBuffers(shader);
   
@@ -403,12 +405,7 @@ function init() {
 }
 
 function resizeCanvasToDisplaySize(canvas) {
-
-  // console.log(`has canvas, has gl? ${!!canvas}, ${!!gl}`);
   if (!canvas || !gl) return;
-  // Lookup the size the browser is displaying the canvas in CSS pixels
-  // and compute a size needed to make our drawingbuffer match it in
-  // device pixels.
   const displayWidth  = window.innerWidth;
   const displayHeight = window.innerHeight;
 
@@ -416,12 +413,9 @@ function resizeCanvasToDisplaySize(canvas) {
   if (canvas.width  !== displayWidth ||
       canvas.height !== displayHeight) {
 
-    // Make the canvas the same size
     canvas.width  = displayWidth;
     canvas.height = displayHeight;
 
-    // When resizing, you also need to reset the viewport of the canvas
-    // otherwise, it will use the previous dimensions.
     gl.viewport(0, 0, canvas.width, canvas.height);
     shader.use();
     shader.setVec2("u_winres", getCanvasSize(canvas));
@@ -437,20 +431,162 @@ function resizeCanvasToDisplaySize(canvas) {
 }
 
 function calculateFPS(now) {
-  now *= 0.001; // Convert time to seconds
-  const deltaTime = now - lastTime; // Calculate the time difference since the last frame
+  now *= 0.001;
+  const deltaTime = now - lastTime;
 
-  frameCount++; // Increment the frame counter
+  frameCount++;
 
-  if (deltaTime >= updateFpsEvery) { // When a second or more has passed
-    fps = frameCount / deltaTime; // Calculate FPS
-    frameCount = 0; // Reset frame counter
+  if (deltaTime >= updateFpsEvery) { 
+    fps = frameCount / deltaTime;
+    frameCount = 0;
     lastTime = now;
     // fps-text
     const fpsText = document.getElementById('fps-text');
     fpsText.textContent = `FPS: ${fps.toFixed(2)}`;
-    // console.log(`FPS: ${fps.toFixed(2)}`); // Log FPS to console or display it on your page
   }
+}
+
+function writecc(overlayContent) {
+  /*
+  bgColor: color selector
+  outlineColor: color selector
+  outlineSize: number input
+  transitionSmoothness: number input
+  blendFactor: slider (0~1)
+
+  ----- separator -----
+
+  tick_updates: checkbox
+  render_as_circles: checkbox
+  */
+  const cc = document.createElement('div');
+  cc.setAttribute('id', 'config-content');
+  cc.classList.add('config-content');
+
+  const c1 = document.createElement('div');
+  c1.classList.add('config-item');
+  const l1 = document.createElement('label');
+  l1.setAttribute('for', 'bg-color-input');
+  l1.textContent = 'Background Color: ';
+  c1.appendChild(l1);
+  const i1 = document.createElement('input');
+  i1.setAttribute('type', 'color');
+  i1.setAttribute('id', 'bg-color-input');
+  i1.setAttribute('value', bgColor.toHex());
+  i1.addEventListener('input', (e) => {
+    bgColor = new Color(e.target.value);
+  });
+  c1.appendChild(i1);
+  cc.appendChild(c1);
+
+  const c2 = document.createElement('div');
+  c2.classList.add('config-item');
+  const l2 = document.createElement('label');  
+  l2.setAttribute('for', 'outline-color-input');
+  l2.textContent = 'Outline Color: ';
+  c2.appendChild(l2);
+  const i2 = document.createElement('input');
+  i2.setAttribute('type', 'color');
+  i2.setAttribute('id', 'outline-color-input');
+  i2.setAttribute('value', outlineColor.toHex());
+  i2.addEventListener('input', (e) => {
+    outlineColor = new Color(e.target.value);
+    shader.use();
+    shader.setVec4("u_outline_color", outlineColor.rgba(true));
+  });
+  c2.appendChild(i2);
+  cc.appendChild(c2);
+
+  const c3 = document.createElement('div');
+  c3.classList.add('config-item');
+  const l3 = document.createElement('label');
+  l3.setAttribute('for', 'outline-size-input');
+  l3.textContent = 'Outline Size: ';
+  c3.appendChild(l3);
+  const i3 = document.createElement('input');
+  i3.setAttribute('type', 'number');
+  i3.setAttribute('id', 'outline-size-input');
+  i3.setAttribute('value', outlineSize);
+  i3.addEventListener('input', (e) => {
+    outlineSize = parseFloat(e.target.value);
+    shader.use();
+    shader.setFloat("u_outline_size", outlineSize);
+  });
+  c3.appendChild(i3);
+  cc.appendChild(c3);
+
+  const c4 = document.createElement('div');
+  c4.classList.add('config-item');
+  const l4 = document.createElement('label');
+  l4.setAttribute('for', 'transition-smoothness-input');
+  l4.textContent = 'Transition Smoothness: ';
+  c4.appendChild(l4);
+  const i4 = document.createElement('input');
+  i4.setAttribute('type', 'range');
+  i4.setAttribute('id', 'transition-smoothness-input');
+  i4.setAttribute('min', '0');
+  i4.setAttribute('max', '3');
+  i4.setAttribute('step', '0.01');
+  i4.setAttribute('value', transitionSmoothness);
+  i4.addEventListener('input', (e) => {
+    transitionSmoothness = parseFloat(e.target.value);
+    shader.use();
+    shader.setFloat("u_transition_smoothness", transitionSmoothness);
+
+    document.getElementById('v4-span').textContent = transitionSmoothness;
+  });
+  c4.appendChild(i4);
+  const v4 = document.createElement('span');
+  v4.setAttribute('id', 'v4-span');
+  v4.textContent = transitionSmoothness;
+  c4.appendChild(v4);
+  cc.appendChild(c4);
+
+  const c5 = document.createElement('div');
+  c5.classList.add('config-item');
+  const l5 = document.createElement('label');
+  l5.setAttribute('for', 'blend-factor-input');
+  l5.textContent = 'Blend Factor: ';
+  c5.appendChild(l5); 
+  const i5 = document.createElement('input');
+  i5.setAttribute('type', 'range');
+  i5.setAttribute('id', 'blend-factor-input');
+  i5.setAttribute('min', '0'); 
+  i5.setAttribute('max', '1');
+  i5.setAttribute('step', '0.01'); 
+  i5.setAttribute('value', blendFactor);
+  i5.addEventListener('input', (e) => {
+    blendFactor = parseFloat(e.target.value);
+    shader.use();
+    shader.setFloat("u_blend_factor", blendFactor);
+
+    document.getElementById('v5-span').textContent = blendFactor;
+  });
+  c5.appendChild(i5);
+  const v5 = document.createElement('span');
+  v5.setAttribute('id', 'v5-span');
+  v5.textContent = blendFactor;
+  c5.appendChild(v5);
+  cc.appendChild(c5);
+  
+  const c6 = document.createElement('div');
+  c6.classList.add('config-item');
+
+  const l6 = document.createElement('label');
+  l6.setAttribute('for', 'tick-updates-input');
+  l6.textContent = 'Tick Updates: ';
+  c6.appendChild(l6);
+  const i6 = document.createElement('input');
+  i6.setAttribute('type', 'checkbox');
+  i6.setAttribute('id', 'tick-updates-input');
+  i6.setAttribute('value', tick_updates);
+  i6.addEventListener('change', (e) => {
+    tick_updates = e.target.checked;
+  });
+  c6.appendChild(i6);
+  cc.appendChild(c6);
+
+  overlayContent.appendChild(cc);
 }
 
 function writeOverlayContent() {
@@ -472,6 +608,8 @@ function writeOverlayContent() {
   fpsText.classList.add('text-outline', 'font-bold', 'text-lg');
   fpsText.textContent = `FPS: ${fps.toFixed(2)}`;
   overlayContent.appendChild(fpsText);
+
+  writecc(overlayContent);
   
   mainContent.appendChild(overlayContent);
 }

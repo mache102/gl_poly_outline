@@ -171,6 +171,14 @@ export class Color {
     return (this.r << 24) | (this.g << 16) | (this.b << 8) | this.a;
   }
 
+  toHex() {
+    // #RRGGBB if a = 255, #RRGGBBAA otherwise
+    if (this.a === 255) {
+      return `#${this.r.toString(16).padStart(2, '0')}${this.g.toString(16).padStart(2, '0')}${this.b.toString(16).padStart(2, '0')}`;
+    }
+    return `#${this.r.toString(16).padStart(2, '0')}${this.g.toString(16).padStart(2, '0')}${this.b.toString(16).padStart(2, '0')}${this.a.toString(16).padStart(2, '0')}`;
+  }
+
   // for canvas2D
   getCssString() {
     return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;

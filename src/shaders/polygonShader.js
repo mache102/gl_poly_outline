@@ -136,6 +136,7 @@ out vec4 fragColor;
 uniform vec4 u_outline_color;
 uniform float u_outline_size;
 uniform float u_transition_smoothness;
+uniform float u_blend_factor;
 
 const uint POLYGON_BODY = 0u;
 const uint OUTLINE_CORNER = 1u;
@@ -163,22 +164,30 @@ int getIntBits(uint value, int start, int end) {
   return int(getUintBits(value, start, end));
 }
 
+vec4 lerpVec4(vec4 a, vec4 b, float t) {
+  return a * (1.0 - t) + b * t;
+}
+
 void main(void) {
 
   switch (getUintBits(v_attr, 0, 1)) {
-    case POLYGON_BODY:
-    case OUTLINE_QUAD: {
+    case POLYGON_BODY: {
       fragColor = v_color;
       return;
     }
-
+    
     case OUTLINE_CORNER: {
       float s = smoothstep(u_outline_size - u_transition_smoothness, u_outline_size, distance(v_offset, gl_FragCoord.xy));
-      fragColor = mix(u_outline_color, vec4(0.), s);
+      fragColor = mix(lerpVec4(v_color, u_outline_color, u_blend_factor), vec4(0.), s);
       
       return;
     }
 
+    case OUTLINE_QUAD: {
+      fragColor = lerpVec4(v_color, u_outline_color, u_blend_factor);
+      return;
+    }
+      
     case POLYGON_CIRCLE: {
       float d = distance(v_offset, gl_FragCoord.xy);
 
@@ -190,25 +199,27 @@ void main(void) {
         return;
       }
 
+      vec4 outline_color = lerpVec4(v_color, u_outline_color, u_blend_factor);
+
       // smoothstep from inner to outline
       if (d < v_size) {
         float r2 = v_size - u_outline_size + u_transition_smoothness;
         float s = smoothstep(r1, r2, d);
-        fragColor = mix(v_color, u_outline_color, s);
+        fragColor = mix(v_color, outline_color, s);
         return;
       }
 
       // circle outline
       float r3 = v_size + u_outline_size - u_transition_smoothness;
       if (d < r3) {
-        fragColor = u_outline_color;
+        fragColor = outline_color;
         return;
       }
 
       // smoothstep from outline to outer (alpha=0)
       float r4 = v_size + u_outline_size;
       float s = smoothstep(r3, r4, d);
-      fragColor = mix(u_outline_color, vec4(0.), s);
+      fragColor = mix(outline_color, vec4(0.), s);
       
       return;
     }
