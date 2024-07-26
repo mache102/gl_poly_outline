@@ -17,12 +17,8 @@ See branch `webgl2_edgequads` or clone using `git clone -b webgl2_edgequads` and
 
 ### OpenGL
 
-![OpenGL polygons](./img/gl_poly_outline_opengl.png)
-
-![OpenGL circles](./img/gl_poly_outline_opengl_circles.png)
+![OpenGL polygons & circles](./img/gl_poly_outline_opengl_3.png)
 
 ### WebGL
 
-![WebGL polygons](./img/gl_poly_outline_webgl.png)
-
-![WebGL circles](./img/gl_poly_outline_webgl_circles.png)
+![WebGL polygons & circles](./img/gl_poly_outline_webgl_3.png)
