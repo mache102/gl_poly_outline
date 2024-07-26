@@ -14,6 +14,7 @@ namespace settings {
   Color outlineColor = Color("#484848");
   float outlineSize = 2.5;
   float transitionSmoothness = 0.5; // smoothstep at outline
+  float blendFactor = 0.6; // 0.0 = no blend, 1.0 = full blend
   std::vector<Color> polygonColors = {
     Color("#3ca4cb"),
     Color("#8abc3f"),
@@ -99,6 +100,10 @@ namespace settings {
 
       {"transitionSmoothness", [&](std::istringstream &iss) {
         iss >> settings::transitionSmoothness;
+      }},
+
+      {"blendFactor", [&](std::istringstream &iss) {
+        iss >> settings::blendFactor;
       }},
 
       {"polygonColors", [&](std::istringstream &iss) {

@@ -91,7 +91,7 @@ void addPolygon(std::vector<glm::vec2> vertices, float rotation, float size, glm
 
       p_outline_directions.push_back(0.);
       p_attrs.push_back(cornerCoordAttrs[j] | OUTLINE_CORNER);
-      p_colors.push_back(outlineColor);
+      p_colors.push_back(color);
     }
   }
 
@@ -106,7 +106,7 @@ void addPolygon(std::vector<glm::vec2> vertices, float rotation, float size, glm
       p_offsets.push_back(offset);
 
       p_attrs.push_back(OUTLINE_QUAD); 
-      p_colors.push_back(outlineColor);
+      p_colors.push_back(color);
     }
   }
 }
@@ -275,6 +275,7 @@ int main(int argc, char** argv) {
   p_shader->setVec4("u_outline_color", outlineColor.rgba(true));
   p_shader->setFloat("u_outline_size", outlineSize);
   p_shader->setFloat("u_transition_smoothness", transitionSmoothness);
+  p_shader->setFloat("u_blend_factor", blendFactor);
 
   init();
 
@@ -283,7 +284,7 @@ int main(int argc, char** argv) {
     glm::vec2 o = randCoord();
     instance_indices[i].start = p_coords.size();
 
-    if (!render_as_circles) {
+    if (i % 2 == 0) {
       addPolygon(
         vertices,
         (i * 2 * M_PI) / 360.0,

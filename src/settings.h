@@ -32,6 +32,8 @@ namespace settings {
 
   extern float outlineSize;
   extern float transitionSmoothness;
+  extern float blendFactor;
+  
   extern std::vector<Color> polygonColors;
 
   extern uint32_t polygonCount;
